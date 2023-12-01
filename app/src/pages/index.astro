@@ -1,16 +1,31 @@
 ---
-
+import Header from '@/components/Header'
+import { Tabs} from '@/components/Tabs'
+import { About } from '@/components/About'
+import { DataCards } from '@/components/DataCards';
+import { Chart } from '@/components/Chart';
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-7" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta property="og:title" content="Coulton Fraser">
+    <meta property="og:description" content="Software developer in Calgary, AB.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://raw.githubusercontent.com/CoultonF/coultonf/main/src/images/websitepreview.png">
+    <meta property="og:url" content="https://coultonf.github.io/coultonf/">
+    <title>Coulton Fraser</title>
+  </head>
+  <body>
+    <Header client:load />
+    <main>
+      <About client:load />
+      <DataCards client:load />
+      <Chart client:load/>
+    </main>
+    <footer></footer>
+  </body>
 </html>
