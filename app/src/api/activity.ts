@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const MetricSchema = z.object({
-  units: z.string(),
-  value: z.number(),
+  units: z.string().optional(),
+  value: z.number().optional(),
 });
 
 const HKMetaDataSchema = z.object({
@@ -15,8 +15,8 @@ const HKMetaDataSchema = z.object({
 });
 
 const ActivitySchema = z.object({
-  distance: z.optional(MetricSchema),
-  duration: MetricSchema,
+  distance: MetricSchema.optional(),
+  duration: MetricSchema.optional(),
   time: z.string(),
   energy: MetricSchema,
   name: z.string(),

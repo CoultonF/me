@@ -268,7 +268,57 @@ export class ActivityCycling extends OpenAPIRoute {
         headers: corsHeaders,
       });
     }
-    // ?endDate={activityDate}&latest=true&type={dataset_type['dataset_type']}
+    if (env.OFFLINE) {
+      return new Response(
+        JSON.stringify({
+          distance: {},
+          duration: { units: 'seconds', value: 3339.799276947975 },
+          energy: { units: 'kilocalories', value: 238.36482773231253 },
+          id: 'dba4cbcdadc6a940f40df72a6220c934',
+          name: 'Cycling - 5.94 miles',
+          origin: {
+            id: '6DCE6A06-E33A-4CEE-8F1D-CEFF222DD714',
+            name: 'com.apple.HealthKit',
+            payload: {
+              device: {
+                hardwareVersion: 'Watch6,11',
+                manufacturer: 'Apple Inc.',
+                model: 'Watch',
+                name: 'Apple Watch',
+                softwareVersion: '9.6.3',
+              },
+              sourceRevision: {
+                operatingSystemVersion: '9.6.3',
+                productType: 'Watch6,11',
+                source: {
+                  bundleIdentifier: 'com.apple.health.15BB3925-B09E-4EBB-9D2C-1FE9294EBF35',
+                  name: 'Coulton\u2019s Apple\u00a0Watch',
+                },
+                version: '9.6.3',
+              },
+            },
+            type: 'service',
+          },
+          payload: {
+            HKAverageMETs: '4.88864 kcal/hr\u00b7kg',
+            HKElevationAscended: '2232 cm',
+            HKIndoorWorkout: 0,
+            HKTimeZone: 'America/Edmonton',
+            HKWeatherHumidity: '8600 %',
+            HKWeatherTemperature: '38.804 degF',
+          },
+          time: '2023-09-30T16:57:54.101Z',
+          type: 'physicalActivity',
+          uploadId: '6c9617f19a2b5a4406186219208a2951',
+        }),
+        {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        },
+      );
+    }
     let processedCycling = false;
     let endingDate = formatISO(endOfToday());
     const authUrl = 'https://api.tidepool.org/auth/login';
@@ -326,6 +376,57 @@ export class ActivityRunning extends OpenAPIRoute {
         headers: corsHeaders,
       });
     }
+    if (env?.OFFLINE) {
+      return new Response(
+        JSON.stringify({
+          distance: { units: 'miles', value: 6.49839226947045 },
+          duration: { units: 'seconds', value: 3695.7359260320663 },
+          energy: { units: 'kilocalories', value: 684.2562515172903 },
+          id: '6bdc2e992ce337010884f5fff8e3d040',
+          name: 'Running - 6.50 miles',
+          origin: {
+            id: 'B9A5CF19-F666-4717-ADC8-8B70F75EC7C4',
+            name: 'com.apple.HealthKit',
+            payload: {
+              device: {
+                hardwareVersion: 'Watch6,11',
+                manufacturer: 'Apple Inc.',
+                model: 'Watch',
+                name: 'Apple Watch',
+                softwareVersion: '9.6.3',
+              },
+              sourceRevision: {
+                operatingSystemVersion: '9.6.3',
+                productType: 'Watch6,11',
+                source: {
+                  bundleIdentifier: 'com.apple.health.15BB3925-B09E-4EBB-9D2C-1FE9294EBF35',
+                  name: 'Coulton\u2019s Apple\u00a0Watch',
+                },
+                version: '9.6.3',
+              },
+            },
+            type: 'service',
+          },
+          payload: {
+            HKAverageMETs: '10.1731 kcal/hr\u00b7kg',
+            HKElevationAscended: '3504 cm',
+            HKIndoorWorkout: 0,
+            HKTimeZone: 'America/Edmonton',
+            HKWeatherHumidity: '8700 %',
+            HKWeatherTemperature: '39.182 degF',
+          },
+          time: '2023-09-30T15:51:51.464Z',
+          type: 'physicalActivity',
+          uploadId: '6c9617f19a2b5a4406186219208a2951',
+        }),
+        {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        },
+      );
+    }
     let processedRunning = false;
     let endingDate = formatISO(endOfToday());
     const authUrl = 'https://api.tidepool.org/auth/login';
@@ -349,7 +450,6 @@ export class ActivityRunning extends OpenAPIRoute {
         headers: headers,
       });
       const responseData = await response.json();
-      console.log(responseData);
       const validData = parse(ActivitySchema, responseData[0]);
       if (validData.name.startsWith('Running')) {
         processedRunning = true;

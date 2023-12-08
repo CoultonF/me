@@ -42,6 +42,42 @@ export class CarbohydratesLatest extends OpenAPIRoute {
         headers: corsHeaders,
       });
     }
+    if (env?.OFFLINE) {
+      return new Response(
+        JSON.stringify({
+          id: '8a8a97cf4dba6509825614aa09ef8b87',
+          nutrition: { carbohydrate: { net: 15, units: 'grams' } },
+          origin: {
+            id: '6D6C6D2E-27BB-4F01-8FF0-A9D4A539FF28',
+            name: 'com.apple.HealthKit',
+            payload: {
+              sourceRevision: {
+                operatingSystemVersion: '16.6.1',
+                productType: 'iPhone13,1',
+                source: { bundleIdentifier: 'com.L7J48HW4B6.loopkit.Loop', name: 'Loop' },
+                version: '4',
+              },
+            },
+            type: 'service',
+          },
+          payload: {
+            HKMetadataKeySyncIdentifier: '21DD8FF8-6F87-4D57-967B-C899E5CB0101',
+            HKMetadataKeySyncVersion: 1,
+            'com.loopkit.AbsorptionTime': 10800,
+            'com.loopkit.CarbKit.HKMetadataKey.UserCreatedDate': '2023-10-01T19:20:36.369Z',
+          },
+          time: '2023-10-01T19:20:36.369Z',
+          type: 'food',
+          uploadId: '6c9617f19a2b5a4406186219208a2951',
+        }),
+        {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        },
+      );
+    }
     // Retrieve the validated parameters
     const startingDate = formatISO(startOfToday());
     // start_date_str = starting_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -66,7 +102,6 @@ export class CarbohydratesLatest extends OpenAPIRoute {
     });
 
     const responseData = await response.json();
-    console.log(responseData[0].nutrition);
     const validData = parse(CarbohydratesSchema, responseData[0]);
 
     return new Response(JSON.stringify(validData), {

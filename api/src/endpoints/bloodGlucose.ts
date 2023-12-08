@@ -40,6 +40,51 @@ export class BloodGlucoseLatest extends OpenAPIRoute {
         headers: corsHeaders,
       });
     }
+    if (env?.OFFLINE) {
+      return new Response(
+        JSON.stringify({
+          id: 'e636ab23a86940ec74342d8e13257337',
+          origin: {
+            id: '07ACEB7C-55D1-4CCE-BA8F-5BCBC7E411D6',
+            name: 'com.apple.HealthKit',
+            payload: {
+              device: {
+                manufacturer: 'Dexcom',
+                model: 'G6',
+                name: 'CGMBLEKit',
+                softwareVersion: '21.0',
+                udiDeviceIdentifier: '00386270000385',
+              },
+              sourceRevision: {
+                operatingSystemVersion: '16.6.1',
+                productType: 'iPhone13,1',
+                source: { bundleIdentifier: 'com.L7J48HW4B6.loopkit.Loop', name: 'Loop' },
+                version: '4',
+              },
+            },
+            type: 'service',
+          },
+          payload: {
+            HKMetadataKeySyncIdentifier: '8C6SA4 6108974',
+            HKMetadataKeySyncVersion: 1,
+            'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrend': '\u2192',
+            'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrendRateUnit': 'mg/min\u00b7dL',
+            'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrendRateValue': -0.8,
+          },
+          time: '2023-10-01T17:25:18.204Z',
+          type: 'cbg',
+          units: 'mmol/L',
+          uploadId: '6c9617f19a2b5a4406186219208a2951',
+          value: 7.60452,
+        }),
+        {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        },
+      );
+    }
     const authUrl = 'https://api.tidepool.org/auth/login';
     const authHeaders = {
       Authorization: env.BASE64_AUTH,
@@ -94,7 +139,53 @@ export class BloodGlucoseDays extends OpenAPIRoute {
         headers: corsHeaders,
       });
     }
-    // Retrieve the validated parameters
+    if (env?.OFFLINE) {
+      return new Response(
+        JSON.stringify([
+          {
+            id: 'e636ab23a86940ec74342d8e13257337',
+            origin: {
+              id: '07ACEB7C-55D1-4CCE-BA8F-5BCBC7E411D6',
+              name: 'com.apple.HealthKit',
+              payload: {
+                device: {
+                  manufacturer: 'Dexcom',
+                  model: 'G6',
+                  name: 'CGMBLEKit',
+                  softwareVersion: '21.0',
+                  udiDeviceIdentifier: '00386270000385',
+                },
+                sourceRevision: {
+                  operatingSystemVersion: '16.6.1',
+                  productType: 'iPhone13,1',
+                  source: { bundleIdentifier: 'com.L7J48HW4B6.loopkit.Loop', name: 'Loop' },
+                  version: '4',
+                },
+              },
+              type: 'service',
+            },
+            payload: {
+              HKMetadataKeySyncIdentifier: '8C6SA4 6108974',
+              HKMetadataKeySyncVersion: 1,
+              'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrend': '\u2192',
+              'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrendRateUnit': 'mg/min\u00b7dL',
+              'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrendRateValue': -0.8,
+            },
+            time: '2023-10-01T17:25:18.204Z',
+            type: 'cbg',
+            units: 'mmol/L',
+            uploadId: '6c9617f19a2b5a4406186219208a2951',
+            value: 7.60452,
+          },
+        ]),
+        {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        },
+      );
+    }
     const { days } = data.params;
     const startingDate = formatISO(subDays(new Date(), Number(days)));
     // start_date_str = starting_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
