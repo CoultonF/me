@@ -1,12 +1,11 @@
-import React, { useRef, useLayoutEffect, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 
-interface TimeSeriesData {
-  date: Date;
-  value: number;
-}
+type ChartProps = {
+  data: any;
+};
 
-export const Chart = ({ data }) => {
+export const Chart = ({ data }: ChartProps) => {
   const chartRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
