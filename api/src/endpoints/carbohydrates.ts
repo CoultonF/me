@@ -1,6 +1,11 @@
 import { formatISO, startOfToday } from 'date-fns';
 import { OpenAPIRoute, OpenAPIRouteSchema, Query } from '@cloudflare/itty-router-openapi';
 import { parse, optional, object, number, string, array, isoDateTime, isoTimestamp } from 'valibot'; // 0.86 kB
+const corsHeaders = {
+  'Access-Control-Allow-Headers': '*', // What headers are allowed. * is wildcard. Instead of using '*', you can specify a list of specific headers that are allowed, such as: Access-Control-Allow-Headers: X-Requested-With, Content-Type, Accept, Authorization.
+  'Access-Control-Allow-Methods': 'GET', // Allowed methods. Others could be GET, PUT, DELETE etc.
+  'Access-Control-Allow-Origin': '*', // This is URLs that are allowed to access the server. * is the wildcard character meaning any URL can.
+};
 
 const CarbohydrateSchema = object({
   net: optional(number()),
@@ -32,6 +37,11 @@ export class CarbohydratesLatest extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     // Retrieve the validated parameters
     const startingDate = formatISO(startOfToday());
     // start_date_str = starting_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -59,7 +69,12 @@ export class CarbohydratesLatest extends OpenAPIRoute {
     console.log(responseData[0].nutrition);
     const validData = parse(CarbohydratesSchema, responseData[0]);
 
-    return validData;
+    return new Response(JSON.stringify(validData), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }
 
@@ -76,6 +91,11 @@ export class CarbohydratesToday extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     // Retrieve the validated parameters
     const startingDate = formatISO(startOfToday());
     // start_date_str = starting_date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -102,6 +122,11 @@ export class CarbohydratesToday extends OpenAPIRoute {
     const responseData = await response.json();
     const validData = parse(array(CarbohydratesSchema), responseData);
 
-    return validData;
+    return new Response(JSON.stringify(validData), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }

@@ -2,6 +2,11 @@ import { endOfToday, endOfMonth, startOfMonth, subDays, formatISO, parseISO, sta
 import { OpenAPIRoute, OpenAPIRouteSchema, Path, Query } from '@cloudflare/itty-router-openapi';
 import { parse, optional, object, number, string, array, isoDateTime, isoTimestamp } from 'valibot'; // 0.86 kB
 
+const corsHeaders = {
+  'Access-Control-Allow-Headers': '*', // What headers are allowed. * is wildcard. Instead of using '*', you can specify a list of specific headers that are allowed, such as: Access-Control-Allow-Headers: X-Requested-With, Content-Type, Accept, Authorization.
+  'Access-Control-Allow-Methods': 'GET', // Allowed methods. Others could be GET, PUT, DELETE etc.
+  'Access-Control-Allow-Origin': '*', // This is URLs that are allowed to access the server. * is the wildcard character meaning any URL can.
+};
 const MetricSchema = object({
   units: string(),
   value: number(),
@@ -39,6 +44,11 @@ export class ActivityRunningMonth extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     const endingDate = formatISO(endOfMonth(new Date()));
     const startingDate = formatISO(startOfMonth(new Date()));
     const authUrl = 'https://api.tidepool.org/auth/login';
@@ -62,7 +72,15 @@ export class ActivityRunningMonth extends OpenAPIRoute {
     });
     const responseData = await response.json();
     const validData = parse(array(ActivitySchema), responseData);
-    return validData.filter(activity => (activity?.name !== undefined ? activity.name.startsWith('Running') : false));
+    const results = validData.filter(activity =>
+      activity?.name !== undefined ? activity.name.startsWith('Running') : false,
+    );
+    return new Response(JSON.stringify(results), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }
 export class ActivityRunningDays extends OpenAPIRoute {
@@ -82,6 +100,11 @@ export class ActivityRunningDays extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     const { days } = data.params;
     const startingDate = formatISO(subDays(new Date(), Number(days)));
     const endingDate = formatISO(new Date());
@@ -106,7 +129,15 @@ export class ActivityRunningDays extends OpenAPIRoute {
     });
     const responseData = await response.json();
     const validData = parse(array(ActivitySchema), responseData);
-    return validData.filter(activity => (activity?.name !== undefined ? activity.name.startsWith('Runnin') : false));
+    const results = validData.filter(activity =>
+      activity?.name !== undefined ? activity.name.startsWith('Runnin') : false,
+    );
+    return new Response(JSON.stringify(results), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }
 export class ActivityCyclingDays extends OpenAPIRoute {
@@ -126,6 +157,11 @@ export class ActivityCyclingDays extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     const { days } = data.params;
     const startingDate = formatISO(subDays(new Date(), Number(days)));
     const endingDate = formatISO(new Date());
@@ -150,7 +186,15 @@ export class ActivityCyclingDays extends OpenAPIRoute {
     });
     const responseData = await response.json();
     const validData = parse(array(ActivitySchema), responseData);
-    return validData.filter(activity => (activity?.name !== undefined ? activity.name.startsWith('Cycling') : false));
+    const results = validData.filter(activity =>
+      activity?.name !== undefined ? activity.name.startsWith('Cycling') : false,
+    );
+    return new Response(JSON.stringify(results), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }
 export class ActivityCyclingMonth extends OpenAPIRoute {
@@ -166,6 +210,11 @@ export class ActivityCyclingMonth extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     const endingDate = formatISO(endOfMonth(new Date()));
     const startingDate = formatISO(startOfMonth(new Date()));
     const authUrl = 'https://api.tidepool.org/auth/login';
@@ -189,7 +238,15 @@ export class ActivityCyclingMonth extends OpenAPIRoute {
     });
     const responseData = await response.json();
     const validData = parse(array(ActivitySchema), responseData);
-    return validData.filter(activity => (activity?.name !== undefined ? activity.name.startsWith('Cycling') : false));
+    const results = validData.filter(activity =>
+      activity?.name !== undefined ? activity.name.startsWith('Cycling') : false,
+    );
+    return new Response(JSON.stringify(results), {
+      headers: {
+        'Content-type': 'application/json',
+        ...corsHeaders, //uses the spread operator to include the CORS headers.
+      },
+    });
   }
 }
 
@@ -206,6 +263,11 @@ export class ActivityCycling extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     // ?endDate={activityDate}&latest=true&type={dataset_type['dataset_type']}
     let processedCycling = false;
     let endingDate = formatISO(endOfToday());
@@ -233,7 +295,12 @@ export class ActivityCycling extends OpenAPIRoute {
       const validData = parse(ActivitySchema, responseData[0]);
       if (validData.name.startsWith('Cycling')) {
         processedCycling = true;
-        return validData;
+        return new Response(JSON.stringify(validData), {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        });
       } else {
         endingDate = formatISO(subDays(parseISO(endingDate), 1));
       }
@@ -254,7 +321,11 @@ export class ActivityRunning extends OpenAPIRoute {
   };
 
   async handle(request: Request, env: any, context: any, data: Record<string, any>) {
-    // ?endDate={activityDate}&latest=true&type={dataset_type['dataset_type']}
+    if (request.method === 'OPTIONS') {
+      return new Response('OK', {
+        headers: corsHeaders,
+      });
+    }
     let processedRunning = false;
     let endingDate = formatISO(endOfToday());
     const authUrl = 'https://api.tidepool.org/auth/login';
@@ -283,7 +354,12 @@ export class ActivityRunning extends OpenAPIRoute {
       if (validData.name.startsWith('Running')) {
         processedRunning = true;
 
-        return validData;
+        return new Response(JSON.stringify(validData), {
+          headers: {
+            'Content-type': 'application/json',
+            ...corsHeaders, //uses the spread operator to include the CORS headers.
+          },
+        });
       } else {
         endingDate = formatISO(subDays(parseISO(endingDate), 1));
       }
