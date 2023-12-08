@@ -1,5 +1,5 @@
 import { OpenAPIRouter } from '@cloudflare/itty-router-openapi';
-import { BloodGlucoseLatest, BloodGlucoseToday } from './endpoints/bloodGlucose';
+import { BloodGlucoseDays, BloodGlucoseLatest, BloodGlucoseToday } from './endpoints/bloodGlucose';
 import { InsulinBolusLatest, InsulinBolusToday } from './endpoints/insulinBolus';
 import {
   ActivityCycling,
@@ -19,6 +19,7 @@ export const router = OpenAPIRouter({
 router.get('/', HealthCheck);
 router.get('/api/blood-glucose/today', BloodGlucoseToday);
 router.get('/api/blood-glucose/latest', BloodGlucoseLatest);
+router.get('/api/blood-glucose/days/:days', BloodGlucoseDays);
 router.get('/api/insulin-bolus/today', InsulinBolusToday);
 router.get('/api/insulin-bolus/latest', InsulinBolusLatest);
 router.get('/api/carbohydrates/today', CarbohydratesToday);

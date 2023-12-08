@@ -17,6 +17,14 @@ export const GlucoseSchema = z.object({
   value: z.number(),
 });
 
+export const getGlucoseDays = async (days: number) => {
+  const res = await fetch(`${import.meta.env.API_ENDPOINT}/api/blood-glucose/days/${days}`, {
+    method: 'GET',
+  });
+  const data = await res.json();
+  const parsedData = z.array(GlucoseSchema).parse(data);
+  return parsedData;
+};
 export const getGlucoseToday = async () => {
   const res = await fetch(`${import.meta.env.API_ENDPOINT}/api/blood-glucose/today`, {
     method: 'GET',

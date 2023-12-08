@@ -37,7 +37,7 @@ var __publicField = (obj, key, value) => {
   return value;
 };
 
-// .wrangler/tmp/bundle-J86ZQR/checked-fetch.js
+// .wrangler/tmp/bundle-QqW8Fj/checked-fetch.js
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
     (typeof request === "string" ? new Request(request, init) : request).url
@@ -55,7 +55,7 @@ function checkURL(request, init) {
 }
 var urls;
 var init_checked_fetch = __esm({
-  ".wrangler/tmp/bundle-J86ZQR/checked-fetch.js"() {
+  ".wrangler/tmp/bundle-QqW8Fj/checked-fetch.js"() {
     urls = /* @__PURE__ */ new Set();
     globalThis.fetch = new Proxy(globalThis.fetch, {
       apply(target, thisArg, argArray) {
@@ -8920,7 +8920,7 @@ var require_dist = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-J86ZQR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-QqW8Fj/middleware-loader.entry.ts
 init_checked_fetch();
 init_modules_watch_stub();
 
@@ -8948,7 +8948,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
   ]);
 }
 
-// .wrangler/tmp/bundle-J86ZQR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-QqW8Fj/middleware-insertion-facade.js
 init_checked_fetch();
 init_modules_watch_stub();
 
@@ -13748,6 +13748,49 @@ __publicField(BloodGlucoseLatest, "schema", {
     }
   }
 });
+var BloodGlucoseDays = class extends K {
+  async handle(request, env, context, data) {
+    const { days } = data.params;
+    const startingDate = formatISO(subDays(/* @__PURE__ */ new Date(), Number(days)));
+    const authUrl = "https://api.tidepool.org/auth/login";
+    const authHeaders = {
+      Authorization: env.BASE64_AUTH
+    };
+    const auth = await fetch(authUrl, {
+      method: "POST",
+      headers: authHeaders
+    });
+    const token = auth.headers.get("x-tidepool-session-token") ?? "";
+    const authData = await auth.json();
+    const userid = authData["userid"] ?? "";
+    const url = `https://api.tidepool.org/data/${userid}?startDate=${startingDate}&type=cbg`;
+    const headers = {
+      "X-Tidepool-Session-Token": token
+    };
+    const response = await fetch(url, {
+      method: "GET",
+      headers
+    });
+    const responseData = await response.json();
+    const validData = parse2(array(BloodGlucoseSchema), responseData);
+    return validData;
+  }
+};
+__publicField(BloodGlucoseDays, "schema", {
+  tags: ["Blood Glucose"],
+  summary: "Get blood glucose data",
+  parameters: {
+    days: M(Number, {
+      description: "Number of days to get from today"
+    })
+  },
+  responses: {
+    "200": {
+      description: "Returns a secret value",
+      schema: [BloodGlucoseType]
+    }
+  }
+});
 var BloodGlucoseToday = class extends K {
   async handle(request, env, context, data) {
     const startingDate = formatISO(startOfToday());
@@ -13771,7 +13814,6 @@ var BloodGlucoseToday = class extends K {
       headers
     });
     const responseData = await response.json();
-    console.log(responseData[0]["payload"]);
     const validData = parse2(array(BloodGlucoseSchema), responseData);
     return validData;
   }
@@ -14270,6 +14312,7 @@ var router = m({
 router.get("/", HealthCheck);
 router.get("/api/blood-glucose/today", BloodGlucoseToday);
 router.get("/api/blood-glucose/latest", BloodGlucoseLatest);
+router.get("/api/blood-glucose/days/:days", BloodGlucoseDays);
 router.get("/api/insulin-bolus/today", InsulinBolusToday);
 router.get("/api/insulin-bolus/latest", InsulinBolusLatest);
 router.get("/api/carbohydrates/today", CarbohydratesToday);
@@ -14319,7 +14362,7 @@ var jsonError2 = async (request, env, _ctx, middlewareCtx) => {
 var middleware_miniflare3_json_error_default = jsonError2;
 var wrap = void 0;
 
-// .wrangler/tmp/bundle-J86ZQR/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-QqW8Fj/middleware-insertion-facade.js
 var envWrappers = [wrap].filter(Boolean);
 var facade = {
   ...src_default,
@@ -14331,7 +14374,7 @@ var facade = {
 };
 var middleware_insertion_facade_default = facade;
 
-// .wrangler/tmp/bundle-J86ZQR/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-QqW8Fj/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
