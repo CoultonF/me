@@ -1,0 +1,202 @@
+---
+import { z } from 'zod';
+import { zDateTime } from './zodDates.ts';
+import { getActivityRunningLatest, getCarbohydratesLatest, getGlucoseLatest, getInsulinBolusLatest  } from '@/api/index.ts';
+import { Icon } from 'astro-icon'
+
+const activityData = await getActivityRunningLatest()
+const nutritionData = await getCarbohydratesLatest()
+const insulinData = await  getInsulinBolusLatest()
+const glucoseData = await getGlucoseLatest()
+const dateOptions = {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+} as const;
+
+const timeOptions = {
+  dayPeriod: undefined,
+  hour: 'numeric',
+  minute: 'numeric',
+  second: undefined,
+} as const;
+
+const DistanceSchema = z.object({
+  units: z.string(),
+  value: z.number(),
+});
+
+const RunningSchema = z
+  .object({
+    distance: DistanceSchema,
+    time: zDateTime,
+  })
+  .transform(v => {
+    const { distance, time, ...rest } = v;
+    return {
+      kilometers: distance.units === 'miles' ? (distance.value * 1.609344).toFixed(2) : distance.value.toFixed(2),
+      date: new Date(v.time).toLocaleDateString('en-US', dateOptions),
+      time: new Date(v.time).toLocaleTimeString('en-US', timeOptions),
+      ...rest,
+    };
+  });
+const GlucoseSchema = z
+  .object({
+    time: zDateTime,
+    units: z.string(),
+    value: z.number(),
+    payload: z
+      .object({
+        'com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrend': z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .transform(v => {
+    const { time, value, payload, ...rest } = v;
+    return {
+      value: v.value.toFixed(1),
+      date: new Date(v.time).toLocaleDateString('en-US', dateOptions),
+      time: new Date(v.time).toLocaleTimeString('en-US', timeOptions),
+      trend: payload?.['com.LoopKit.GlucoseKit.HKMetadataKey.GlucoseTrend'],
+      ...rest,
+    };
+  });
+
+const BolusSchema = z
+  .object({
+    normal: z.number(),
+    time: zDateTime,
+  })
+  .transform(v => {
+    const { time, ...rest } = v;
+    return {
+      date: new Date(v.time).toLocaleDateString('en-US', dateOptions),
+      time: new Date(v.time).toLocaleTimeString('en-US', timeOptions),
+      ...rest,
+    };
+  });
+
+const NutritionSchema = z.object({
+  carbohydrate: z.object({
+    net: z.number(),
+    units: z.string(),
+  }),
+});
+
+const FoodSchema = z
+  .object({
+    nutrition: NutritionSchema,
+    time: zDateTime,
+  })
+  .transform(v => {
+    const { nutrition} = v;
+    return {
+      carbohydrate: nutrition.carbohydrate.net,
+      units: nutrition.carbohydrate.units,
+      date: new Date(v.time).toLocaleDateString('en-US', dateOptions),
+      time: new Date(v.time).toLocaleTimeString('en-US', timeOptions),
+    };
+  });
+  const runningStats = RunningSchema.parse(activityData);
+  const glucoseStats = GlucoseSchema.parse(glucoseData);
+  const bolusStats = BolusSchema.parse(insulinData);
+  const foodStats = FoodSchema.parse(nutritionData);
+  const stats = [
+    {
+      name: 'Activity',
+      stat: `${runningStats.kilometers} km`,
+      date: runningStats.date,
+      time: runningStats.time,
+    },
+    {
+      name: 'Blood Glucose',
+      stat: `${Number(glucoseData.value).toFixed(1)} mmol/L `,
+      trend: glucoseStats?.trend,
+      date: glucoseStats.date,
+      time: glucoseStats.time,
+    },
+    {
+      name: 'Insulin Dosage',
+      stat: `${bolusStats.normal} units`,
+      date: bolusStats.date,
+      time: bolusStats.time,
+    },
+    {
+      name: 'Carbohydrates Eaten',
+      stat: `${foodStats.carbohydrate} ${foodStats.units}`,
+      date: foodStats.date,
+      time: foodStats.time,
+    },
+  ];
+  console.log(glucoseStats.trend)
+---
+    <div class="container mx-auto px-4 max-w-[1000px]">
+      <h3 class="text-2xl font-semibold leading-6 text-gray-900">Lastest Stats</h3>
+      <dl class="my-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div
+            class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 flex justify-around"
+          >
+            <div class="">
+              <dt class="truncate text-sm font-medium text-gray-500">Running</dt>
+              <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{runningStats.kilometers} km</dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400">
+                {runningStats.date} @ {runningStats.time}
+              </dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400"></dd>
+            </div>
+            <div class="flex-none self-center m-4">
+      <Icon name="mdi:run" class="text-indigo-500 h-12 w-12"/>
+              </div>
+          </div>
+          <div
+            class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 flex justify-around"
+          >
+            <div class="">
+              <dt class="truncate text-sm font-medium text-gray-500">Blood Glucose</dt>
+              <dd class="mt-1 text-3xl flex flex-row font-semibold tracking-tight text-gray-900">{glucoseStats.value} {glucoseStats.units} {
+                glucoseStats?.trend == '↗' ? <Icon name="mdi:arrow-top-right-thin" class="text-black w-10 h-10"/> : glucoseStats.trend == "→" ? <Icon name="mdi:arrow-right-thin" class="text-black h-10 w-10"/>: <Icon icon="mdi:arrow-up-thin" class="w-10 h-10 text-black"/>
+              }</dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400">
+                {glucoseStats.date} @ {glucoseStats.time}
+              </dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400"></dd>
+            </div>
+            <div class="flex-none self-center m-4">
+      <Icon name="mdi:water-outline" class="text-red-500 h-12 w-12"/>
+              </div>
+          </div>
+          <div
+            class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 flex justify-around"
+          >
+            <div class="">
+              <dt class="truncate text-sm font-medium text-gray-500">Insulin Dosage</dt>
+              <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{bolusStats.normal} units</dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400">
+                {bolusStats.date} @ {bolusStats.time}
+              </dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400"></dd>
+            </div>
+            <div class="flex-none self-center m-4">
+      <Icon name="mdi:syringe" class="text-green-600 h-12 w-12"/>
+              </div>
+          </div>
+          <div
+            class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 flex justify-around"
+          >
+            <div class="">
+              <dt class="truncate text-sm font-medium text-gray-500">Carbohydrates</dt>
+              <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{foodStats.carbohydrate} g</dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400">
+                {foodStats.date} @ {foodStats.time}
+              </dd>
+              <dd class="mt-1 text-sm  tracking-tight text-gray-400"></dd>
+            </div>
+            <div class="flex-none self-center m-4">
+      <Icon name="mdi:baguette" class="text-amber-500 h-12 w-12"/>
+              </div>
+          </div>
+        {}
+      </dl>
+    </div>

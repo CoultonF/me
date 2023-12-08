@@ -1,9 +1,8 @@
 ---
-import Header from '@/components/Header'
-import { Tabs} from '@/components/Tabs'
-import { About } from '@/components/About'
-import { DataCards } from '@/components/DataCards';
-import { Chart } from '@/components/Chart';
+import Header from '@/components/Header.astro'
+import  About  from '@/components/About.astro'
+import DataCards from '@/components/DataCards.astro';
+import Analytics from '@/components/Analytics.astro';
 ---
 
 <html lang="en">
@@ -20,11 +19,11 @@ import { Chart } from '@/components/Chart';
     <title>Coulton Fraser</title>
   </head>
   <body>
-    <Header client:load />
+    <Header />
     <main>
-      <About client:load />
-      <DataCards client:load />
-      <Chart client:load/>
+      <About/>
+      <DataCards />
+      <Analytics />
     </main>
     <footer></footer>
   </body>

@@ -1,0 +1,10 @@
+---
+import { getGlucoseToday } from '@/api/glucose.ts';
+import { Chart } from '@/components/Chart.tsx';
+
+const data = await getGlucoseToday()
+console.log(data)
+---
+<div>
+  <Chart client:load data={data}/>
+</div>
