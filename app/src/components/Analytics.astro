@@ -2,9 +2,9 @@
 import { getGlucoseDays } from '@/api/glucose.ts';
 import { Chart } from '@/components/Chart.tsx';
 
-const data = await getGlucoseDays(1)
-console.log(data)
+const data = await getGlucoseDays(1);
 ---
+
 <div>
-  <Chart client:load data={data}/>
+  <Chart client:load data={data} />
 </div>
