@@ -7,7 +7,7 @@ const MetricSchema = z.object({
 
 const HKMetaDataSchema = z.object({
   HKAverageMETs: z.string(),
-  HKElevationAscended: z.string(),
+  HKElevationAscended: z.string().optional(),
   HKIndoorWorkout: z.number(),
   HKTimeZone: z.string(),
   HKWeatherHumidity: z.string().optional(),
