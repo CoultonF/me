@@ -1,0 +1,35 @@
+---
+const currentPath = Astro.url.pathname;
+
+const navLinks = [
+  { href: '/', label: 'Home' },
+  { href: '/dashboard', label: 'Dashboard' },
+];
+---
+
+<header class="border-b border-surface-overlay">
+  <nav class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+    <a href="/" class="text-lg font-semibold text-text-primary hover:text-brand-light transition-colors">
+      Coulton Fraser
+    </a>
+    <ul class="flex gap-6">
+      {
+        navLinks.map(link => (
+          <li>
+            <a
+              href={link.href}
+              class:list={[
+                'text-sm font-medium transition-colors',
+                currentPath === link.href || (link.href !== '/' && currentPath.startsWith(link.href))
+                  ? 'text-brand-light'
+                  : 'text-text-secondary hover:text-text-primary',
+              ]}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+</header>

@@ -1,0 +1,17 @@
+{
+  "name": "coultonf-site",
+  "compatibility_date": "2025-12-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "coultonf-health",
+      // Run `wrangler d1 create coultonf-health` and paste the ID here
+      "database_id": "PLACEHOLDER"
+    }
+  ]
+  // Phase 2: cron triggers for data ingestion
+  // "triggers": {
+  //   "crons": ["*/5 * * * *"]
+  // }
+}

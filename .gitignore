@@ -133,3 +133,16 @@ dist
 **/.dev.vars
 
 **/tmp/***
+
+# Astro
+.astro/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Bun
+bun.lock
+
+# OS
+.DS_Store

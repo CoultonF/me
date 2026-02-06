@@ -1,8 +1,0 @@
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnPaste": true,
-  "editor.formatOnType": true,
-  "prettier.resolveGlobalModules": true,
-  "prettier.configPath": ".prettierrc.toml",
-}
