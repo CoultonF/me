@@ -10,7 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "postbuild": "node scripts/patch-worker.cjs",
-    "deploy": "npm run build && wrangler pages deploy ./dist --project-name coultonf-site --commit-dirty=true"
+    "deploy": "npm run build && wrangler pages deploy ./dist --project-name me-69y --commit-dirty=true"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.0.0-beta.5",
