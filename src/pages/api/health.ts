@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
+import { getCloudflareEnv } from '@/lib/env';
 
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async () => {
   try {
-    const db = (locals as App.Locals).runtime.env.DB;
-    // Simple connectivity check — D1 always has sqlite_master
-    await db.prepare('SELECT 1 FROM sqlite_master LIMIT 1').first();
+    const cfEnv = await getCloudflareEnv();
+    if (!cfEnv) throw new Error('D1 unavailable');
+    await cfEnv.DB.prepare('SELECT 1 FROM sqlite_master LIMIT 1').first();
     return new Response(JSON.stringify({ status: 'ok', db: 'connected' }), {
       headers: { 'Content-Type': 'application/json' },
     });

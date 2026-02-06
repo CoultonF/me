@@ -1,0 +1,19 @@
+{
+  "name": "coultonf-sync",
+  "main": "worker.ts",
+  "compatibility_date": "2025-12-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "coultonf-health",
+      "database_id": "57968039-caca-44a5-b5e8-56492af00b15"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  }
+  // Set TIDEPOOL_EMAIL and TIDEPOOL_PASSWORD as secrets:
+  // wrangler secret put TIDEPOOL_EMAIL
+  // wrangler secret put TIDEPOOL_PASSWORD
+}

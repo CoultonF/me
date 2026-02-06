@@ -19,11 +19,19 @@
   --color-curtain: rgba(0, 0, 0, 0.4);
   --color-banner-stroke: transparent;
 
-  /* ── Glucose range colors ── */
+  /* ── Glucose range colors (saturated — metrics, current reading) ── */
   --color-glucose-low: #ef4444;
   --color-glucose-normal: #22c55e;
   --color-glucose-high: #f59e0b;
   --color-glucose-very-high: #f97316;
+
+  /* ── Glucose chart zone backgrounds (muted, Dexcom-inspired) ── */
+  --color-glucose-zone-low: #d48a8a;
+  --color-glucose-zone-normal: #8a9a6c;
+  --color-glucose-zone-high: #c9b87a;
+
+  /* ── Chart dot color (flips with theme) ── */
+  --color-chart-dot: #1a1a1a;
 
   /* ── Activity ring colors ── */
   --color-activity-move: #fa114f;
@@ -56,6 +64,7 @@
   --color-stroke-soft: #222;
   --color-curtain: rgba(0, 0, 0, 0.6);
   --color-banner-stroke: #222;
+  --color-chart-dot: #e5e5e5;
 }
 
 /* ── Non-color theme variable ── */

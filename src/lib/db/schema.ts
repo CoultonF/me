@@ -1,4 +1,4 @@
-import { sqliteTable, text, real, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, real, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const glucoseReadings = sqliteTable('glucose_readings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -6,7 +6,9 @@ export const glucoseReadings = sqliteTable('glucose_readings', {
   value: real('value').notNull(), // mmol/L
   trend: text('trend'),
   source: text('source').default('dexcom'),
-});
+}, (table) => [
+  uniqueIndex('glucose_readings_timestamp_idx').on(table.timestamp),
+]);
 
 export const insulinDoses = sqliteTable('insulin_doses', {
   id: integer('id').primaryKey({ autoIncrement: true }),

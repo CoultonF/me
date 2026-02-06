@@ -1,17 +1,13 @@
 {
   "name": "coultonf-site",
+  "pages_build_output_dir": "./dist",
   "compatibility_date": "2025-12-01",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "coultonf-health",
-      // Run `wrangler d1 create coultonf-health` and paste the ID here
-      "database_id": "PLACEHOLDER"
+      "database_id": "57968039-caca-44a5-b5e8-56492af00b15"
     }
   ]
-  // Phase 2: cron triggers for data ingestion
-  // "triggers": {
-  //   "crons": ["*/5 * * * *"]
-  // }
 }

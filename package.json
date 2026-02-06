@@ -9,7 +9,8 @@
     "check": "astro check",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "deploy": "astro build && wrangler pages deploy ./dist"
+    "postbuild": "node scripts/patch-worker.cjs",
+    "deploy": "npm run build && wrangler pages deploy ./dist --project-name coultonf-site --commit-dirty=true"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.0.0-beta.5",
@@ -20,6 +21,7 @@
     "drizzle-orm": "^0.45.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "recharts": "^3.7.0",
     "tailwindcss": "^4.1.18",
     "zod": "^4.3.6"
   },

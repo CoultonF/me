@@ -1,6 +1,7 @@
 ---
 import '@/styles/global.css';
 import { Image } from 'astro:assets';
+import { ClientRouter } from 'astro:transitions';
 import profilePhoto from '@/assets/profile.jpg';
 
 interface Props {
@@ -14,6 +15,7 @@ const year = new Date().getFullYear();
 const nav = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/glucose', label: 'Glucose' },
 ];
 ---
 
@@ -25,12 +27,18 @@ const nav = [
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <ClientRouter />
 
   <script is:inline>
     (function() {
-      const saved = localStorage.getItem('theme');
-      const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', saved || system);
+      function applyTheme() {
+        const saved = localStorage.getItem('theme');
+        const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', saved || system);
+      }
+      applyTheme();
+      // Re-apply after view transition swaps the DOM (before paint)
+      document.addEventListener('astro:after-swap', applyTheme);
     })();
   </script>
 </head>
@@ -38,7 +46,7 @@ const nav = [
 
   <div class="sidebar-overlay fixed inset-0 bg-curtain z-40"></div>
 
-  <aside class="sidebar fixed top-0 left-0 w-[280px] h-screen bg-panel border-r border-stroke flex flex-col pt-10 px-6 z-50 overflow-y-auto transition-transform duration-300">
+  <aside class="sidebar fixed top-0 left-0 w-[280px] h-screen bg-panel border-r border-stroke flex flex-col pt-10 px-6 z-50 overflow-y-auto transition-transform duration-300" transition:animate="none">
     <div class="sidebar-content relative z-[1] pb-8">
       <div>
         <Image src={profilePhoto} alt="Coulton Fraser" width={80} height={80} class="size-20 rounded-full object-cover mb-4" />
@@ -101,7 +109,7 @@ const nav = [
     </div>
   </div>
 
-  <main class="ml-0 md:ml-[280px] px-5 md:px-12 pt-8 md:pt-12 pb-6 md:pb-8 max-w-[960px]">
+  <main class="ml-0 md:ml-[280px] px-5 md:px-12 pt-8 md:pt-12 pb-6 md:pb-8 max-w-[960px]" transition:animate="fade">
     <slot />
   </main>
 
@@ -110,18 +118,15 @@ const nav = [
   </footer>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const menuToggles = document.querySelectorAll('.menu-toggle');
-      const overlay = document.querySelector('.sidebar-overlay');
-      const closeSidebar = () => document.body.classList.remove('sidebar-open');
-
-      menuToggles.forEach(btn => {
+    function initInteractions() {
+      document.querySelectorAll('.menu-toggle').forEach(btn => {
         btn.addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
       });
-      overlay?.addEventListener('click', closeSidebar);
+      document.querySelector('.sidebar-overlay')?.addEventListener('click', () => {
+        document.body.classList.remove('sidebar-open');
+      });
 
-      const themeToggles = document.querySelectorAll('.theme-toggle');
-      themeToggles.forEach(btn => {
+      document.querySelectorAll('.theme-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
           const current = document.documentElement.getAttribute('data-theme');
           const next = current === 'dark' ? 'light' : 'dark';
@@ -129,13 +134,17 @@ const nav = [
           localStorage.setItem('theme', next);
         });
       });
+    }
 
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!localStorage.getItem('theme')) {
-          document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-        }
-      });
+    // System theme change — only bind once
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
     });
+
+    // Runs on initial load + every view transition navigation
+    document.addEventListener('astro:page-load', initInteractions);
   </script>
 </body>
 </html>

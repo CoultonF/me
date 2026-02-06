@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import GlucoseDashboard from '@/islands/GlucoseDashboard';
+---
+
+<SiteLayout title="Glucose | Coulton Fraser" activePath="/dashboard/glucose">
+  <GlucoseDashboard client:load initialRange="24h" />
+</SiteLayout>

@@ -1,28 +1,91 @@
 ---
 import SiteLayout from '@/layouts/SiteLayout.astro';
+import { getCloudflareEnv } from '@/lib/env';
+import { createDb } from '@/lib/db/client';
+import { getLatestGlucose } from '@/lib/db/queries';
+
+let glucose: { value: number; trend: string | null; timestamp: string } | null = null;
+
+try {
+  const cfEnv = await getCloudflareEnv();
+  if (cfEnv) {
+    const db = createDb(cfEnv.DB);
+    const latest = await getLatestGlucose(db);
+    if (latest) {
+      glucose = { value: latest.value, trend: latest.trend, timestamp: latest.timestamp };
+    }
+  }
+} catch {
+  // D1 unavailable in dev, graceful fallback
+}
+
+const TREND_ARROWS: Record<string, string> = {
+  constant: '→', slowRise: '↗', slowFall: '↘', rise: '↑', fall: '↓',
+  rapidRise: '⇈', rapidFall: '⇊', flat: '→', fortyFiveUp: '↗',
+  fortyFiveDown: '↘', singleUp: '↑', singleDown: '↓', doubleUp: '⇈', doubleDown: '⇊',
+};
+
+function glucoseColor(value: number): string {
+  if (value < 3.9) return 'text-glucose-low';
+  if (value <= 10.0) return 'text-glucose-normal';
+  if (value <= 13.9) return 'text-glucose-high';
+  return 'text-glucose-very-high';
+}
+
+function timeAgo(timestamp: string): string {
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ${mins % 60}m ago`;
+}
 ---
 
 <SiteLayout title="Dashboard | Coulton Fraser" activePath="/dashboard">
   <h1 class="text-xl font-semibold text-heading mb-6">Dashboard</h1>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="bg-tile border border-stroke rounded-lg p-5">
+    <a href="/dashboard/glucose" class="bg-tile border border-stroke rounded-lg p-5 no-underline hover:border-accent transition-colors group">
       <div class="text-xs font-medium text-dim uppercase tracking-wide mb-3">Current Glucose</div>
-      <div class="text-[2rem] font-semibold text-heading leading-none mb-1">&mdash;</div>
-      <div class="text-[0.8rem] text-dim mb-3">mmol/L</div>
-      <div class="text-xs text-ghost pt-3 border-t border-stroke italic">Data syncs in Phase 2</div>
-    </div>
+      {glucose ? (
+        <>
+          <div class="flex items-baseline gap-1.5">
+            <span class={`text-[2rem] font-semibold leading-none ${glucoseColor(glucose.value)}`}>
+              {glucose.value.toFixed(1)}
+            </span>
+            {glucose.trend && (
+              <span class={`text-xl ${glucoseColor(glucose.value)}`}>
+                {TREND_ARROWS[glucose.trend] ?? ''}
+              </span>
+            )}
+          </div>
+          <div class="text-[0.8rem] text-dim mb-3">mmol/L</div>
+          <div class="text-xs text-ghost pt-3 border-t border-stroke">
+            {timeAgo(glucose.timestamp)} · <span class="text-accent group-hover:underline">View details →</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <div class="text-[2rem] font-semibold text-heading leading-none mb-1">&mdash;</div>
+          <div class="text-[0.8rem] text-dim mb-3">mmol/L</div>
+          <div class="text-xs text-ghost pt-3 border-t border-stroke">
+            No data yet · <span class="text-accent group-hover:underline">View details →</span>
+          </div>
+        </>
+      )}
+    </a>
     <div class="bg-tile border border-stroke rounded-lg p-5">
       <div class="text-xs font-medium text-dim uppercase tracking-wide mb-3">Today&rsquo;s Activity</div>
       <div class="text-[2rem] font-semibold text-heading leading-none mb-1">&mdash;</div>
       <div class="text-[0.8rem] text-dim mb-3">steps</div>
-      <div class="text-xs text-ghost pt-3 border-t border-stroke italic">Data syncs in Phase 2</div>
+      <div class="text-xs text-ghost pt-3 border-t border-stroke italic">Coming soon</div>
     </div>
     <div class="bg-tile border border-stroke rounded-lg p-5">
       <div class="text-xs font-medium text-dim uppercase tracking-wide mb-3">Latest Run</div>
       <div class="text-[2rem] font-semibold text-heading leading-none mb-1">&mdash;</div>
       <div class="text-[0.8rem] text-dim mb-3">km</div>
-      <div class="text-xs text-ghost pt-3 border-t border-stroke italic">Data syncs in Phase 2</div>
+      <div class="text-xs text-ghost pt-3 border-t border-stroke italic">Coming soon</div>
     </div>
   </div>
 </SiteLayout>
