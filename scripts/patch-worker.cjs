@@ -26,4 +26,25 @@ fs.writeFileSync(cfgPath, JSON.stringify(cfg));
 // Shim index.js → entry.mjs since Pages expects index.js
 fs.writeFileSync(shimPath, 'export { default } from "./entry.mjs";\n');
 
+// Move static assets from dist/client/ to dist/ root so Pages serves them
+const distDir = path.join(__dirname, '..', 'dist');
+const clientDir = path.join(distDir, 'client');
+if (fs.existsSync(clientDir)) {
+  const copyRecursive = (src, dest) => {
+    const stat = fs.statSync(src);
+    if (stat.isDirectory()) {
+      fs.mkdirSync(dest, { recursive: true });
+      for (const child of fs.readdirSync(src)) {
+        copyRecursive(path.join(src, child), path.join(dest, child));
+      }
+    } else {
+      fs.copyFileSync(src, dest);
+    }
+  };
+  for (const entry of fs.readdirSync(clientDir)) {
+    copyRecursive(path.join(clientDir, entry), path.join(distDir, entry));
+  }
+  console.log('Copied dist/client/* to dist/ root for Pages static serving');
+}
+
 console.log('Patched dist/_worker.js for Pages deploy');
