@@ -13,6 +13,11 @@ delete cfg.no_bundle;    // Not used by Pages
 // Remove absolute paths that won't work in CI
 delete cfg.configPath;
 delete cfg.userConfigPath;
+// Remove auto-generated SESSION KV binding (no ID, we don't use astro:session)
+if (cfg.kv_namespaces) {
+  cfg.kv_namespaces = cfg.kv_namespaces.filter(ns => ns.id);
+  if (cfg.kv_namespaces.length === 0) delete cfg.kv_namespaces;
+}
 // Keep pages_build_output_dir so wrangler recognizes this as a Pages config
 // (and applies compatibility_flags like nodejs_compat)
 cfg.pages_build_output_dir = '..';
