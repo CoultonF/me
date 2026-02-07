@@ -5,6 +5,7 @@ import GlucoseTimeSeries from './glucose/GlucoseTimeSeries';
 import TimeInRangeDonut from './glucose/TimeInRangeDonut';
 import SummaryCards from './glucose/SummaryCards';
 import DateRangePicker from './glucose/DateRangePicker';
+import GlucoseTIRCalendar from './glucose/GlucoseTIRCalendar';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
@@ -129,6 +130,10 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
 
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
             <SummaryCards stats={stats} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="TIR calendar failed to load">
+            <GlucoseTIRCalendar />
           </ErrorBoundary>
         </>
       )}

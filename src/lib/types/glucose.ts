@@ -17,8 +17,15 @@ export interface GlucoseStats {
   };
 }
 
+export interface GlucoseDailyTIR {
+  date: string;
+  tirPercent: number;
+  count: number;
+}
+
 export interface GlucoseAPIResponse {
   latest: GlucoseReading | null;
   readings: GlucoseReading[];
   stats: GlucoseStats;
+  dailyTIR?: GlucoseDailyTIR[];
 }

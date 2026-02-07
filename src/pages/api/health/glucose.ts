@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
-import { getLatestGlucose, getGlucoseRange, getGlucoseRangeDownsampled, getGlucoseStats } from '@/lib/db/queries';
+import { getLatestGlucose, getGlucoseRange, getGlucoseRangeDownsampled, getGlucoseStats, getGlucoseDailyTIR } from '@/lib/db/queries';
 import type { GlucoseAPIResponse } from '@/lib/types/glucose';
 
 const RANGE_MS: Record<string, number> = {
@@ -9,6 +9,7 @@ const RANGE_MS: Record<string, number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
   '30d': 30 * 24 * 60 * 60 * 1000,
   '90d': 90 * 24 * 60 * 60 * 1000,
+  '365d': 365 * 24 * 60 * 60 * 1000,
 };
 
 const emptyResponse: GlucoseAPIResponse = {
@@ -34,6 +35,24 @@ export const GET: APIRoute = async ({ url }) => {
     const now = new Date();
     const startDate = new Date(now.getTime() - ms).toISOString();
     const endDate = now.toISOString();
+
+    if (range === '365d') {
+      const [latest, dailyTIR] = await Promise.all([
+        getLatestGlucose(db),
+        getGlucoseDailyTIR(db, startDate, endDate),
+      ]);
+
+      const body: GlucoseAPIResponse = {
+        latest: latest ? { timestamp: latest.timestamp, value: latest.value, trend: latest.trend } : null,
+        readings: [],
+        stats: { min: 0, max: 0, avg: 0, count: 0, timeInRange: { low: 0, normal: 0, high: 0, veryHigh: 0 } },
+        dailyTIR,
+      };
+
+      return new Response(JSON.stringify(body), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     const sampleEvery: Record<string, number> = { '24h': 1, '7d': 4, '30d': 17, '90d': 52 };
     const n = sampleEvery[range] ?? 1;

@@ -375,6 +375,25 @@ export async function getRunningExtendedStats(db: Database, startDate: string, e
   };
 }
 
+export async function getGlucoseDailyTIR(db: Database, startDate: string, endDate: string) {
+  const rows = await db
+    .select({
+      date: sql<string>`date(${glucoseReadings.timestamp})`.as('date'),
+      count: count(),
+      inRange: sql<number>`sum(case when ${glucoseReadings.value} >= 3.9 and ${glucoseReadings.value} <= 10.0 then 1 else 0 end)`,
+    })
+    .from(glucoseReadings)
+    .where(and(gte(glucoseReadings.timestamp, startDate), lte(glucoseReadings.timestamp, endDate)))
+    .groupBy(sql`date(${glucoseReadings.timestamp})`)
+    .orderBy(sql`date(${glucoseReadings.timestamp})`);
+
+  return rows.map((r) => ({
+    date: r.date,
+    tirPercent: Math.round(((r.inRange ?? 0) / r.count) * 100),
+    count: r.count,
+  }));
+}
+
 export async function getPaceHRCorrelation(db: Database, startDate: string, endDate: string) {
   const range = and(
     gte(runningSessions.startTime, startDate),
