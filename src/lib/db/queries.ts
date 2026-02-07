@@ -261,3 +261,110 @@ export async function getRunningStats(db: Database, startDate: string, endDate: 
     workoutCount: agg?.workoutCount ?? 0,
   };
 }
+
+export async function getWeeklyDistances(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(runningSessions.startTime, startDate),
+    lte(runningSessions.startTime, endDate),
+  );
+
+  const rows = await db
+    .select({
+      weekStart: sql<string>`date(${runningSessions.startTime}, 'weekday 1', '-7 days')`.as('week_start'),
+      totalDistanceKm: sql<number>`coalesce(sum(${runningSessions.distanceKm}), 0)`,
+      runCount: count(),
+      runningDistanceKm: sql<number>`coalesce(sum(case when ${runningSessions.activityName} = 'Running' then ${runningSessions.distanceKm} else 0 end), 0)`,
+      cyclingDistanceKm: sql<number>`coalesce(sum(case when ${runningSessions.activityName} = 'Cycling' then ${runningSessions.distanceKm} else 0 end), 0)`,
+    })
+    .from(runningSessions)
+    .where(range)
+    .groupBy(sql`date(${runningSessions.startTime}, 'weekday 1', '-7 days')`)
+    .orderBy(sql`week_start`);
+
+  return rows.map((r) => ({
+    weekStart: r.weekStart,
+    totalDistanceKm: Math.round(r.totalDistanceKm * 100) / 100,
+    runCount: r.runCount,
+    runningDistanceKm: Math.round(r.runningDistanceKm * 100) / 100,
+    cyclingDistanceKm: Math.round(r.cyclingDistanceKm * 100) / 100,
+  }));
+}
+
+export async function getPaceHistory(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(runningSessions.startTime, startDate),
+    lte(runningSessions.startTime, endDate),
+  );
+
+  return db
+    .select({
+      startTime: runningSessions.startTime,
+      avgPaceSecPerKm: runningSessions.avgPaceSecPerKm,
+      distanceKm: runningSessions.distanceKm,
+      activityName: runningSessions.activityName,
+    })
+    .from(runningSessions)
+    .where(range)
+    .orderBy(runningSessions.startTime);
+}
+
+export async function getRunningExtendedStats(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(runningSessions.startTime, startDate),
+    lte(runningSessions.startTime, endDate),
+  );
+
+  const [agg] = await db
+    .select({
+      totalDistanceKm: sql<number>`coalesce(sum(${runningSessions.distanceKm}), 0)`,
+      totalDurationSeconds: sql<number>`coalesce(sum(${runningSessions.durationSeconds}), 0)`,
+      avgHeartRate: sql<number>`coalesce(avg(${runningSessions.avgHeartRate}), 0)`,
+      workoutCount: count(),
+      longestRunKm: sql<number>`coalesce(max(${runningSessions.distanceKm}), 0)`,
+      fastestPaceSecPerKm: sql<number>`min(case when ${runningSessions.avgPaceSecPerKm} > 0 then ${runningSessions.avgPaceSecPerKm} else null end)`,
+      totalElevationGainM: sql<number>`coalesce(sum(${runningSessions.elevationGainM}), 0)`,
+      totalActiveCalories: sql<number>`coalesce(sum(${runningSessions.activeCalories}), 0)`,
+    })
+    .from(runningSessions)
+    .where(range);
+
+  const totalDist = agg?.totalDistanceKm ?? 0;
+  const totalDur = agg?.totalDurationSeconds ?? 0;
+
+  return {
+    totalDistanceKm: Math.round(totalDist * 100) / 100,
+    totalDurationSeconds: totalDur,
+    avgPaceSecPerKm: totalDist > 0 ? Math.round(totalDur / totalDist) : 0,
+    avgHeartRate: Math.round(agg?.avgHeartRate ?? 0),
+    workoutCount: agg?.workoutCount ?? 0,
+    longestRunKm: Math.round((agg?.longestRunKm ?? 0) * 100) / 100,
+    fastestPaceSecPerKm: agg?.fastestPaceSecPerKm ?? 0,
+    totalElevationGainM: Math.round((agg?.totalElevationGainM ?? 0) * 10) / 10,
+    totalActiveCalories: agg?.totalActiveCalories ?? 0,
+  };
+}
+
+export async function getPaceHRCorrelation(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(runningSessions.startTime, startDate),
+    lte(runningSessions.startTime, endDate),
+  );
+
+  return db
+    .select({
+      avgPaceSecPerKm: runningSessions.avgPaceSecPerKm,
+      avgHeartRate: runningSessions.avgHeartRate,
+      distanceKm: runningSessions.distanceKm,
+      startTime: runningSessions.startTime,
+    })
+    .from(runningSessions)
+    .where(
+      and(
+        range,
+        sql`${runningSessions.avgHeartRate} IS NOT NULL`,
+        sql`${runningSessions.avgPaceSecPerKm} IS NOT NULL`,
+        sql`${runningSessions.avgPaceSecPerKm} > 0`,
+      ),
+    )
+    .orderBy(runningSessions.startTime);
+}

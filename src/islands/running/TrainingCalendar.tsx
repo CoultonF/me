@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react';
-import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
+import type { Workout } from '../../lib/types/activity';
+import type { RunningAPIResponse } from '../../lib/types/running';
 
 const DAYS = 365;
 
 interface DayData {
   date: string;
   count: number;
-  totalMinutes: number;
+  totalDistanceKm: number;
   names: string[];
 }
 
-function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] {
+function buildCalendarData(workouts: Workout[]): DayData[] {
   const now = new Date();
   const map = new Map<string, DayData>();
 
-  for (let i = days - 1; i >= 0; i--) {
+  for (let i = DAYS - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    map.set(key, { date: key, count: 0, totalMinutes: 0, names: [] });
+    map.set(key, { date: key, count: 0, totalDistanceKm: 0, names: [] });
   }
 
   for (const w of workouts) {
@@ -26,7 +27,7 @@ function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] 
     const entry = map.get(key);
     if (entry) {
       entry.count++;
-      entry.totalMinutes += w.durationSeconds ? Math.round(w.durationSeconds / 60) : 0;
+      entry.totalDistanceKm += w.distanceKm ?? 0;
       if (w.activityName && !entry.names.includes(w.activityName)) {
         entry.names.push(w.activityName);
       }
@@ -38,9 +39,9 @@ function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] 
 
 function getIntensityClass(d: DayData): string {
   if (d.count === 0) return 'bg-stroke-soft';
-  if (d.totalMinutes < 30) return 'bg-activity-exercise/40';
-  if (d.totalMinutes < 60) return 'bg-activity-exercise/60';
-  return 'bg-activity-exercise/90';
+  if (d.totalDistanceKm < 3) return 'bg-running-pace/30';
+  if (d.totalDistanceKm < 8) return 'bg-running-pace/55';
+  return 'bg-running-pace/85';
 }
 
 function formatDateLabel(date: string): string {
@@ -51,13 +52,13 @@ function formatDateLabel(date: string): string {
   });
 }
 
-export default function ActivityCalendar() {
+export default function TrainingCalendar() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/api/health/activity?range=365d')
-      .then((r) => r.json() as Promise<ActivityAPIResponse>)
+    fetch('/api/health/running?range=365d')
+      .then((r) => r.json() as Promise<RunningAPIResponse>)
       .then((d) => { setWorkouts(d.workouts); setLoaded(true); })
       .catch(() => setLoaded(true));
   }, []);
@@ -65,7 +66,7 @@ export default function ActivityCalendar() {
   if (!loaded) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs text-dim">Loading activity calendar...</div>
+        <div className="skeleton" style={{ height: 120 }} />
       </div>
     );
   }
@@ -73,21 +74,14 @@ export default function ActivityCalendar() {
   const data = buildCalendarData(workouts);
   const activeDays = data.filter((d) => d.count > 0).length;
 
-  return <GridView data={data} activeDays={activeDays} />;
-}
-
-// ── 365-day compact grid heatmap ──
-
-function GridView({ data, activeDays }: { data: DayData[]; activeDays: number }) {
   const weeks: DayData[][] = [];
   let currentWeek: DayData[] = [];
 
-  // Pad first week to start on Monday
   if (data.length > 0) {
     const firstDay = new Date(data[0]!.date + 'T12:00:00').getDay();
     const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
     for (let i = 0; i < mondayOffset; i++) {
-      currentWeek.push({ date: '', count: -1, totalMinutes: 0, names: [] });
+      currentWeek.push({ date: '', count: -1, totalDistanceKm: 0, names: [] });
     }
   }
 
@@ -102,7 +96,6 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
     weeks.push(currentWeek);
   }
 
-  // Month labels
   const monthLabels: { label: string; index: number }[] = [];
   let lastMonth = '';
   weeks.forEach((week, wi) => {
@@ -123,10 +116,8 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide">Activity Calendar</div>
-        <div className="text-xs text-dim">
-          {activeDays}/{data.length} days active
-        </div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide">Training Calendar</div>
+        <div className="text-xs text-dim">{activeDays}/{data.length} days active</div>
       </div>
 
       <div className="grid gap-[3px]" style={{ gridTemplateColumns: gridCols, gridTemplateRows: `auto repeat(7, 1fr)` }}>
@@ -165,7 +156,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
                         ) : (
                           <>
                             <div className="text-subtle mt-0.5">
-                              {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
+                              {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalDistanceKm.toFixed(1)} km
                             </div>
                             <div className="text-dim">{d.names.join(', ')}</div>
                           </>
@@ -180,14 +171,13 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
         })}
       </div>
 
-      {/* Legend */}
       <div className="flex items-center justify-end gap-2 mt-3 text-[10px] text-dim">
         <span>Rest</span>
         <div className="size-3 rounded-sm bg-stroke-soft" />
-        <div className="size-3 rounded-sm bg-activity-exercise/40" />
-        <div className="size-3 rounded-sm bg-activity-exercise/60" />
-        <div className="size-3 rounded-sm bg-activity-exercise/90" />
-        <span>60+ min</span>
+        <div className="size-3 rounded-sm bg-running-pace/30" />
+        <div className="size-3 rounded-sm bg-running-pace/55" />
+        <div className="size-3 rounded-sm bg-running-pace/85" />
+        <span>8+ km</span>
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import WorkoutList from './activity/WorkoutList';
 import ActivitySummaryCards from './activity/ActivitySummaryCards';
 import ActivityCalendar from './activity/ActivityCalendar';
 import DateRangePicker from './activity/DateRangePicker';
+import ErrorBoundary from './shared/ErrorBoundary';
+import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
 type Range = '7d' | '30d' | '90d';
 
@@ -100,7 +102,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-heading">Activity</h2>
         <div className="flex items-center gap-2">
           <button
@@ -115,21 +117,41 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
       </div>
 
       {loading && !data ? (
-        <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
-          <div className="text-dim">Loading activity data...</div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ChartSkeleton height={200} />
+            <div className="md:col-span-2"><ChartSkeleton height={200} /></div>
+          </div>
+          <ChartSkeleton height={120} />
+          <ChartSkeleton />
+          <CardsSkeleton count={4} />
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ActivityRings activeCalories={todayCalories} exerciseMinutes={todayExercise} />
-            <div className="md:col-span-2">
-              <WeeklyActivityChart dailySummaries={data?.dailySummaries ?? []} />
+          <ErrorBoundary fallbackTitle="Activity rings failed to load">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <ActivityRings activeCalories={todayCalories} exerciseMinutes={todayExercise} />
+              <div className="md:col-span-2">
+                <WeeklyActivityChart dailySummaries={data?.dailySummaries ?? []} />
+              </div>
             </div>
-          </div>
-          <ActivityCalendar />
-          <ActivityTrends dailySummaries={data?.dailySummaries ?? []} />
-          <WorkoutList workouts={data?.workouts ?? []} />
-          <ActivitySummaryCards activityStats={activityStats} runningStats={runningStats} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Activity calendar failed to load">
+            <ActivityCalendar />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Activity trends failed to load">
+            <ActivityTrends dailySummaries={data?.dailySummaries ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Workout list failed to load">
+            <WorkoutList workouts={data?.workouts ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Summary cards failed to load">
+            <ActivitySummaryCards activityStats={activityStats} runningStats={runningStats} />
+          </ErrorBoundary>
         </>
       )}
     </div>

@@ -2,9 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import type { GlucoseAPIResponse } from '../lib/types/glucose';
 import CurrentReading from './glucose/CurrentReading';
 import GlucoseTimeSeries from './glucose/GlucoseTimeSeries';
+import GlucoseOverlay24h from './glucose/GlucoseOverlay24h';
 import TimeInRangeDonut from './glucose/TimeInRangeDonut';
 import SummaryCards from './glucose/SummaryCards';
 import DateRangePicker from './glucose/DateRangePicker';
+import ErrorBoundary from './shared/ErrorBoundary';
+import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
 type Range = '24h' | '7d' | '30d' | '90d';
 
@@ -87,7 +90,7 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-heading">Glucose</h2>
         <div className="flex items-center gap-2">
           <button
@@ -102,20 +105,38 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
       </div>
 
       {loading && !data ? (
-        <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
-          <div className="text-dim">Loading glucose data...</div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ChartSkeleton height={160} />
+            <div className="md:col-span-2"><ChartSkeleton height={160} /></div>
+          </div>
+          <ChartSkeleton />
+          <CardsSkeleton count={4} />
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <CurrentReading reading={data?.latest ?? null} />
-            <div className="md:col-span-2">
-              <TimeInRangeDonut stats={stats} />
+          <ErrorBoundary fallbackTitle="Current reading failed to load">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CurrentReading reading={data?.latest ?? null} />
+              <div className="md:col-span-2">
+                <TimeInRangeDonut stats={stats} />
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
 
-          <GlucoseTimeSeries readings={data?.readings ?? []} range={range} />
-          <SummaryCards stats={stats} />
+          <ErrorBoundary fallbackTitle="Glucose chart failed to load">
+            <GlucoseTimeSeries readings={data?.readings ?? []} range={range} />
+          </ErrorBoundary>
+
+          {range === '24h' && (
+            <ErrorBoundary fallbackTitle="Glucose overlay failed to load">
+              <GlucoseOverlay24h readings={data?.readings ?? []} />
+            </ErrorBoundary>
+          )}
+
+          <ErrorBoundary fallbackTitle="Summary cards failed to load">
+            <SummaryCards stats={stats} />
+          </ErrorBoundary>
         </>
       )}
     </div>

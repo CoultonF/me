@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import RunningDashboard from '@/islands/RunningDashboard';
+---
+
+<SiteLayout title="Running | Coulton Fraser" activePath="/dashboard/running">
+  <RunningDashboard client:load initialRange="90d" />
+</SiteLayout>

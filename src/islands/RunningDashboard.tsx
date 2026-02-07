@@ -1,32 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { InsulinAPIResponse } from '../lib/types/insulin';
-import DailyTotals from './insulin/DailyTotals';
-import BasalBolusDonut from './insulin/BasalBolusDonut';
-import InsulinSummaryCards from './insulin/InsulinSummaryCards';
-import DateRangePicker from './insulin/DateRangePicker';
+import type { RunningAPIResponse } from '../lib/types/running';
+import DateRangePicker, { type Range } from './running/DateRangePicker';
+import RunningSummaryCards from './running/RunningSummaryCards';
+import PaceProgression from './running/PaceProgression';
+import DistanceVolume from './running/DistanceVolume';
+import TrainingCalendar from './running/TrainingCalendar';
+import HRAnalysis from './running/HRAnalysis';
+import WorkoutList from './activity/WorkoutList';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
-
-type Range = '7d' | '30d' | '90d';
 
 interface Props {
   initialRange?: Range;
 }
 
 const EMPTY_STATS = {
-  totalBolus: 0,
-  totalBasal: 0,
-  total: 0,
-  avgDailyTotal: 0,
-  bolusPercent: 0,
-  basalPercent: 0,
-  bolusCount: 0,
-  days: 0,
+  totalDistanceKm: 0, totalDurationSeconds: 0, avgPaceSecPerKm: 0, avgHeartRate: 0,
+  workoutCount: 0, longestRunKm: 0, fastestPaceSecPerKm: 0, totalElevationGainM: 0, totalActiveCalories: 0,
 };
 
-export default function InsulinDashboard({ initialRange = '7d' }: Props) {
+const EMPTY_HR_ZONES = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
+
+export default function RunningDashboard({ initialRange = '90d' }: Props) {
   const [range, setRange] = useState<Range>(initialRange);
-  const [data, setData] = useState<InsulinAPIResponse | null>(null);
+  const [data, setData] = useState<RunningAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -35,9 +32,9 @@ export default function InsulinDashboard({ initialRange = '7d' }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/health/insulin?range=${r}`);
+      const res = await fetch(`/api/health/running?range=${r}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as InsulinAPIResponse;
+      const json = await res.json() as RunningAPIResponse;
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
@@ -67,7 +64,7 @@ export default function InsulinDashboard({ initialRange = '7d' }: Props) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-heading">Insulin</h2>
+          <h2 className="text-lg font-semibold text-heading">Running</h2>
           <DateRangePicker selected={range} onChange={setRange} />
         </div>
         <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
@@ -88,7 +85,7 @@ export default function InsulinDashboard({ initialRange = '7d' }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-heading">Insulin</h2>
+        <h2 className="text-lg font-semibold text-heading">Running</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}
@@ -103,25 +100,38 @@ export default function InsulinDashboard({ initialRange = '7d' }: Props) {
 
       {loading && !data ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2"><ChartSkeleton height={200} /></div>
-            <ChartSkeleton height={200} />
-          </div>
-          <CardsSkeleton count={4} />
+          <CardsSkeleton count={6} columns={3} />
+          <ChartSkeleton />
+          <ChartSkeleton height={280} />
         </div>
       ) : (
         <>
-          <ErrorBoundary fallbackTitle="Daily totals failed to load">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <DailyTotals dailyTotals={data?.dailyTotals ?? []} />
-              </div>
-              <BasalBolusDonut stats={stats} />
-            </div>
+          <ErrorBoundary fallbackTitle="Summary cards failed to load">
+            <RunningSummaryCards stats={stats} />
           </ErrorBoundary>
 
-          <ErrorBoundary fallbackTitle="Summary cards failed to load">
-            <InsulinSummaryCards stats={stats} />
+          <ErrorBoundary fallbackTitle="Pace chart failed to load">
+            <PaceProgression paceHistory={data?.paceHistory ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Distance chart failed to load">
+            <DistanceVolume weeklyDistances={data?.weeklyDistances ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Training calendar failed to load">
+            <TrainingCalendar />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="HR analysis failed to load">
+            <HRAnalysis
+              hrZones={data?.hrZones ?? EMPTY_HR_ZONES}
+              paceHRCorrelation={data?.paceHRCorrelation ?? []}
+              workouts={data?.workouts ?? []}
+            />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Workout list failed to load">
+            <WorkoutList workouts={data?.workouts ?? []} />
           </ErrorBoundary>
         </>
       )}

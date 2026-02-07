@@ -42,6 +42,17 @@
   --color-activity-exercise: #92e82a;
   --color-activity-stand: #00c7fc;
 
+  /* ── Running / cycling chart colors ── */
+  --color-running-pace: #0ea5e9;
+  --color-running-distance: #8b5cf6;
+  --color-running-hr: #ef4444;
+  --color-running-hr-zone1: #22c55e;
+  --color-running-hr-zone2: #84cc16;
+  --color-running-hr-zone3: #eab308;
+  --color-running-hr-zone4: #f97316;
+  --color-running-hr-zone5: #ef4444;
+  --color-running-cycling: #f59e0b;
+
   /* ── Legacy dashboard tokens (used by /dashboard) ── */
   --color-surface: #0f172a;
   --color-surface-raised: #1e293b;
@@ -136,3 +147,14 @@ body.sidebar-open .sidebar-overlay {
 .icon-moon { display: block; }
 [data-theme="dark"] .icon-sun { display: block; }
 [data-theme="dark"] .icon-moon { display: none; }
+
+/* ── Skeleton loading animation ── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+}
+.skeleton {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  background: var(--color-stroke);
+  border-radius: 6px;
+}
