@@ -221,38 +221,30 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
     inserted += batch.length;
   }
 
-  // Aggregate into activitySummaries by date
-  // Query ALL workouts from DB for affected dates so re-syncs produce correct totals
-  const affectedDates = [...new Set(workoutRows.map((w) => w.startTime.slice(0, 10)))];
+  // Rebuild activitySummaries for ALL dates with workouts in DB
+  // This ensures any previously corrupted data gets corrected
+  const allDayRows = await db
+    .select({
+      date: sql<string>`substr(${runningSessions.startTime}, 1, 10)`,
+      totalCalories: sql<number>`coalesce(sum(${runningSessions.activeCalories}), 0)`,
+      totalMinutes: sql<number>`coalesce(sum(${runningSessions.durationSeconds}), 0) / 60.0`,
+    })
+    .from(runningSessions)
+    .groupBy(sql`substr(${runningSessions.startTime}, 1, 10)`);
 
-  for (const date of affectedDates) {
-    const dbWorkouts = await db
-      .select({
-        calories: runningSessions.activeCalories,
-        duration: runningSessions.durationSeconds,
-      })
-      .from(runningSessions)
-      .where(sql`substr(${runningSessions.startTime}, 1, 10) = ${date}`);
-
-    let totalCalories = 0;
-    let totalMinutes = 0;
-    for (const w of dbWorkouts) {
-      totalCalories += w.calories ?? 0;
-      totalMinutes += w.duration ? w.duration / 60 : 0;
-    }
-
+  for (const row of allDayRows) {
     await db
       .insert(activitySummaries)
       .values({
-        date,
-        activeCalories: Math.round(totalCalories),
-        exerciseMinutes: Math.round(totalMinutes),
+        date: row.date,
+        activeCalories: Math.round(row.totalCalories),
+        exerciseMinutes: Math.round(row.totalMinutes),
       })
       .onConflictDoUpdate({
         target: activitySummaries.date,
         set: {
-          activeCalories: Math.round(totalCalories),
-          exerciseMinutes: Math.round(totalMinutes),
+          activeCalories: Math.round(row.totalCalories),
+          exerciseMinutes: Math.round(row.totalMinutes),
         },
       });
   }
