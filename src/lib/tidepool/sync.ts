@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { glucoseReadings, insulinDoses, runningSessions, activitySummaries } from '../db/schema';
 import { getTidepoolSession, fetchCGMData, fetchInsulinData, fetchActivityData } from './client';
 import type { TidepoolPhysicalActivity } from './client';
@@ -242,8 +241,8 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
       .onConflictDoUpdate({
         target: activitySummaries.date,
         set: {
-          activeCalories: sql`coalesce(${activitySummaries.activeCalories}, 0) + ${Math.round(agg.calories)}`,
-          exerciseMinutes: sql`coalesce(${activitySummaries.exerciseMinutes}, 0) + ${Math.round(agg.minutes)}`,
+          activeCalories: Math.round(agg.calories),
+          exerciseMinutes: Math.round(agg.minutes),
         },
       });
   }
