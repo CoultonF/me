@@ -5,8 +5,8 @@ import CorrelationDashboard from '@/islands/CorrelationDashboard';
 ---
 
 <SiteLayout title="Dashboard | Coulton Fraser" activePath="/dashboard">
-  <div class="space-y-6">
-    <MonthlyCalendarDashboard client:load />
-    <CorrelationDashboard client:load />
+  <div class="flex flex-col gap-6">
+    <div><MonthlyCalendarDashboard client:load /></div>
+    <div><CorrelationDashboard client:load /></div>
   </div>
 </SiteLayout>
