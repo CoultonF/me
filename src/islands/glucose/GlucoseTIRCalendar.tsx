@@ -33,10 +33,10 @@ function buildCalendarData(tirData: GlucoseDailyTIR[]): DayData[] {
 
 function getIntensityClass(d: DayData): string {
   if (d.count === 0) return 'bg-stroke-soft';
-  if (d.tirPercent < 50) return 'bg-glucose-normal/25';
-  if (d.tirPercent < 70) return 'bg-glucose-normal/45';
-  if (d.tirPercent < 85) return 'bg-glucose-normal/65';
-  return 'bg-glucose-normal/90';
+  if (d.tirPercent < 50) return 'bg-glucose-low/80';
+  if (d.tirPercent < 70) return 'bg-glucose-very-high/70';
+  if (d.tirPercent < 85) return 'bg-glucose-high/70';
+  return 'bg-glucose-normal/80';
 }
 
 function formatDateLabel(date: string): string {
@@ -174,11 +174,10 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
       {/* Legend */}
       <div className="flex items-center justify-end gap-2 mt-3 text-[10px] text-dim">
         <span>&lt; 50%</span>
-        <div className="size-3 rounded-sm bg-stroke-soft" />
-        <div className="size-3 rounded-sm bg-glucose-normal/25" />
-        <div className="size-3 rounded-sm bg-glucose-normal/45" />
-        <div className="size-3 rounded-sm bg-glucose-normal/65" />
-        <div className="size-3 rounded-sm bg-glucose-normal/90" />
+        <div className="size-3 rounded-sm bg-glucose-low/80" />
+        <div className="size-3 rounded-sm bg-glucose-very-high/70" />
+        <div className="size-3 rounded-sm bg-glucose-high/70" />
+        <div className="size-3 rounded-sm bg-glucose-normal/80" />
         <span>&gt; 85%</span>
       </div>
     </div>
