@@ -96,7 +96,7 @@ export default function CorrelationDashboard() {
       .then((r) => r.json() as Promise<ActivityAPIResponse>)
       .catch(() => null);
 
-    const insulinP = fetch('/api/health/insulin?range=90d')
+    const insulinP = fetch('/api/health/insulin?range=365d')
       .then((r) => r.json() as Promise<InsulinAPIResponse>)
       .catch(() => null);
 
