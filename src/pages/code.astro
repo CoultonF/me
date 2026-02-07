@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import CodeDashboard from '@/islands/CodeDashboard';
+---
+
+<SiteLayout title="Code | Coulton Fraser" activePath="/code">
+  <CodeDashboard client:load initialRange="90d" />
+</SiteLayout>

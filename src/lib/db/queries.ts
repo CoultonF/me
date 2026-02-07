@@ -1,6 +1,6 @@
 import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -645,4 +645,160 @@ export async function updateRaceResult(
 export async function deleteRace(db: Database, id: number) {
   await db.delete(raceResults).where(eq(raceResults.raceId, id));
   await db.delete(races).where(eq(races.id, id));
+}
+
+// ── GitHub queries ──
+
+export async function getGitHubContributions(db: Database, startDate: string, endDate: string) {
+  return db
+    .select({ date: githubContributions.date, count: githubContributions.count })
+    .from(githubContributions)
+    .where(and(gte(githubContributions.date, startDate), lte(githubContributions.date, endDate)))
+    .orderBy(githubContributions.date);
+}
+
+export async function getGitHubContributionStats(db: Database, startDate: string, endDate: string) {
+  const contributions = await getGitHubContributions(db, startDate, endDate);
+
+  const total = contributions.reduce((s, c) => s + c.count, 0);
+
+  // Calculate current streak (consecutive days with count > 0 ending today or yesterday)
+  let currentStreak = 0;
+  for (let i = contributions.length - 1; i >= 0; i--) {
+    if (contributions[i]!.count > 0) {
+      currentStreak++;
+    } else if (currentStreak > 0) {
+      break;
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 0;
+  let streak = 0;
+  for (const c of contributions) {
+    if (c.count > 0) {
+      streak++;
+      if (streak > longestStreak) longestStreak = streak;
+    } else {
+      streak = 0;
+    }
+  }
+
+  return { total, currentStreak, longestStreak };
+}
+
+export async function getGitHubRepos(db: Database, limit = 50) {
+  return db
+    .select({
+      name: githubRepos.name,
+      fullName: githubRepos.fullName,
+      description: githubRepos.description,
+      url: githubRepos.url,
+      language: githubRepos.language,
+      stars: githubRepos.stars,
+      forks: githubRepos.forks,
+      isArchived: githubRepos.isArchived,
+      isFork: githubRepos.isFork,
+      pushedAt: githubRepos.pushedAt,
+    })
+    .from(githubRepos)
+    .where(eq(githubRepos.isFork, false))
+    .orderBy(desc(githubRepos.pushedAt))
+    .limit(limit);
+}
+
+export async function getGitHubLanguages(db: Database) {
+  const rows = await db
+    .select({
+      language: githubLanguages.language,
+      totalBytes: sql<number>`sum(${githubLanguages.bytes})`.as('total_bytes'),
+    })
+    .from(githubLanguages)
+    .groupBy(githubLanguages.language)
+    .orderBy(desc(sql`total_bytes`));
+
+  const grandTotal = rows.reduce((s, r) => s + r.totalBytes, 0);
+
+  return rows.map((r) => ({
+    language: r.language,
+    bytes: r.totalBytes,
+    percentage: grandTotal > 0 ? Math.round((r.totalBytes / grandTotal) * 1000) / 10 : 0,
+  }));
+}
+
+export async function getGitHubEvents(db: Database, limit = 30) {
+  return db
+    .select({
+      type: githubEvents.type,
+      repo: githubEvents.repo,
+      message: githubEvents.message,
+      ref: githubEvents.ref,
+      timestamp: githubEvents.timestamp,
+    })
+    .from(githubEvents)
+    .orderBy(desc(githubEvents.timestamp))
+    .limit(limit);
+}
+
+// ── Claude Code usage queries ──
+
+export async function getClaudeCodeDaily(db: Database, startDate: string, endDate: string) {
+  return db
+    .select()
+    .from(claudeCodeDaily)
+    .where(and(gte(claudeCodeDaily.date, startDate), lte(claudeCodeDaily.date, endDate)))
+    .orderBy(claudeCodeDaily.date);
+}
+
+export async function getClaudeCodeByModel(db: Database, startDate: string, endDate: string) {
+  const range = and(gte(claudeCodeModels.date, startDate), lte(claudeCodeModels.date, endDate));
+
+  return db
+    .select({
+      model: claudeCodeModels.model,
+      inputTokens: sql<number>`sum(${claudeCodeModels.inputTokens})`.as('input_tokens'),
+      outputTokens: sql<number>`sum(${claudeCodeModels.outputTokens})`.as('output_tokens'),
+      costCents: sql<number>`sum(${claudeCodeModels.costCents})`.as('cost_cents'),
+    })
+    .from(claudeCodeModels)
+    .where(range)
+    .groupBy(claudeCodeModels.model)
+    .orderBy(desc(sql`cost_cents`));
+}
+
+export async function getClaudeCodeTotals(db: Database, startDate: string, endDate: string) {
+  const range = and(gte(claudeCodeDaily.date, startDate), lte(claudeCodeDaily.date, endDate));
+
+  const [agg] = await db
+    .select({
+      sessions: sql<number>`coalesce(sum(${claudeCodeDaily.sessions}), 0)`,
+      linesAdded: sql<number>`coalesce(sum(${claudeCodeDaily.linesAdded}), 0)`,
+      linesRemoved: sql<number>`coalesce(sum(${claudeCodeDaily.linesRemoved}), 0)`,
+      commits: sql<number>`coalesce(sum(${claudeCodeDaily.commits}), 0)`,
+      pullRequests: sql<number>`coalesce(sum(${claudeCodeDaily.pullRequests}), 0)`,
+      editAccepted: sql<number>`coalesce(sum(${claudeCodeDaily.editAccepted}), 0)`,
+      editRejected: sql<number>`coalesce(sum(${claudeCodeDaily.editRejected}), 0)`,
+      inputTokens: sql<number>`coalesce(sum(${claudeCodeDaily.inputTokens}), 0)`,
+      outputTokens: sql<number>`coalesce(sum(${claudeCodeDaily.outputTokens}), 0)`,
+      costCents: sql<number>`coalesce(sum(${claudeCodeDaily.costCents}), 0)`,
+      days: sql<number>`count(*)`,
+    })
+    .from(claudeCodeDaily)
+    .where(range);
+
+  return {
+    sessions: agg?.sessions ?? 0,
+    linesAdded: agg?.linesAdded ?? 0,
+    linesRemoved: agg?.linesRemoved ?? 0,
+    commits: agg?.commits ?? 0,
+    pullRequests: agg?.pullRequests ?? 0,
+    editAcceptRate: (agg?.editAccepted ?? 0) + (agg?.editRejected ?? 0) > 0
+      ? Math.round(((agg?.editAccepted ?? 0) / ((agg?.editAccepted ?? 0) + (agg?.editRejected ?? 0))) * 100)
+      : 0,
+    inputTokens: agg?.inputTokens ?? 0,
+    outputTokens: agg?.outputTokens ?? 0,
+    totalTokens: (agg?.inputTokens ?? 0) + (agg?.outputTokens ?? 0),
+    costCents: agg?.costCents ?? 0,
+    days: agg?.days ?? 0,
+  };
 }

@@ -85,3 +85,80 @@ export const raceResults = sqliteTable('race_results', {
 }, (table) => [
   uniqueIndex('race_results_race_id_idx').on(table.raceId),
 ]);
+
+// ── Code / GitHub tables ──
+
+export const githubContributions = sqliteTable('github_contributions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull().unique(), // YYYY-MM-DD
+  count: integer('count').notNull().default(0),
+});
+
+export const githubRepos = sqliteTable('github_repos', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  fullName: text('full_name').notNull().unique(),
+  description: text('description'),
+  url: text('url').notNull(),
+  language: text('language'),
+  stars: integer('stars').default(0),
+  forks: integer('forks').default(0),
+  isArchived: integer('is_archived', { mode: 'boolean' }).default(false),
+  isFork: integer('is_fork', { mode: 'boolean' }).default(false),
+  updatedAt: text('updated_at'),
+  pushedAt: text('pushed_at'),
+});
+
+export const githubEvents = sqliteTable('github_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  type: text('type').notNull(), // push, pr, issue, review, etc.
+  repo: text('repo').notNull(),
+  message: text('message'),
+  ref: text('ref'),
+  timestamp: text('timestamp').notNull(),
+}, (table) => [
+  uniqueIndex('github_events_type_ts_repo_idx').on(table.type, table.timestamp, table.repo),
+]);
+
+export const githubLanguages = sqliteTable('github_languages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  repoName: text('repo_name').notNull(),
+  language: text('language').notNull(),
+  bytes: integer('bytes').notNull().default(0),
+}, (table) => [
+  uniqueIndex('github_languages_repo_lang_idx').on(table.repoName, table.language),
+]);
+
+// ── Claude Code usage (Analytics API) ──
+
+export const claudeCodeDaily = sqliteTable('claude_code_daily', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull().unique(), // YYYY-MM-DD — aggregated across all actors
+  sessions: integer('sessions').default(0),
+  linesAdded: integer('lines_added').default(0),
+  linesRemoved: integer('lines_removed').default(0),
+  commits: integer('commits').default(0),
+  pullRequests: integer('pull_requests').default(0),
+  editAccepted: integer('edit_accepted').default(0),
+  editRejected: integer('edit_rejected').default(0),
+  writeAccepted: integer('write_accepted').default(0),
+  writeRejected: integer('write_rejected').default(0),
+  inputTokens: integer('input_tokens').default(0),
+  outputTokens: integer('output_tokens').default(0),
+  cacheReadTokens: integer('cache_read_tokens').default(0),
+  cacheCreationTokens: integer('cache_creation_tokens').default(0),
+  costCents: integer('cost_cents').default(0), // USD cents
+});
+
+export const claudeCodeModels = sqliteTable('claude_code_models', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),
+  model: text('model').notNull(),
+  inputTokens: integer('input_tokens').default(0),
+  outputTokens: integer('output_tokens').default(0),
+  cacheReadTokens: integer('cache_read_tokens').default(0),
+  cacheCreationTokens: integer('cache_creation_tokens').default(0),
+  costCents: integer('cost_cents').default(0),
+}, (table) => [
+  uniqueIndex('claude_code_models_date_model_idx').on(table.date, table.model),
+]);

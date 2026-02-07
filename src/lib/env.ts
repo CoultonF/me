@@ -4,6 +4,9 @@ export interface CfEnv {
   TIDEPOOL_PASSWORD: string;
   STRAVA_CLIENT_ID: string;
   STRAVA_CLIENT_SECRET: string;
+  GITHUB_TOKEN: string;
+  GITHUB_USERNAME: string;
+  ANTHROPIC_ADMIN_KEY: string;
 }
 
 let _cached: CfEnv | null | undefined;
