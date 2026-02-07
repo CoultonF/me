@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
 import { insertRace, insertRaceResult, updateRace, updateRaceResult, deleteRace, getRacesWithResults } from '@/lib/db/queries';
-import { requireAuth } from '@/lib/auth';
 
 const raceSchema = z.object({
   name: z.string().min(1),
@@ -58,9 +57,6 @@ function toNullable<T extends Record<string, unknown>>(obj: T): { [K in keyof T]
 }
 
 export const POST: APIRoute = async ({ request }) => {
-  const denied = requireAuth(request);
-  if (denied) return denied;
-
   try {
     const cfEnv = await getCloudflareEnv();
     if (!cfEnv) {
@@ -124,7 +120,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    console.error('[api/health/races-admin]', e);
+    console.error('[private/api/races-admin]', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

@@ -3,12 +3,8 @@ import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
 import { getTidepoolSession } from '@/lib/tidepool/client';
 import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '@/lib/tidepool/sync';
-import { requireAuth } from '@/lib/auth';
 
-export const POST: APIRoute = async ({ url, request }) => {
-  const denied = requireAuth(request);
-  if (denied) return denied;
-
+export const POST: APIRoute = async ({ url }) => {
   try {
     const cfEnv = await getCloudflareEnv();
     if (!cfEnv) {
@@ -35,8 +31,6 @@ export const POST: APIRoute = async ({ url, request }) => {
     }
 
     // Backfill — login once, optionally filter by type to stay within CPU limits
-    // ?from=90&to=60&type=insulin → fetch 90 days ago to 60 days ago
-    // ?from=90&type=glucose → fetch 90 days ago to now
     const session = await getTidepoolSession(cfEnv);
     const fromDays = parseInt(fromParam, 10);
     const toDays = toParam ? parseInt(toParam, 10) : 0;
@@ -44,7 +38,7 @@ export const POST: APIRoute = async ({ url, request }) => {
     const now = Date.now();
     const startMs = now - fromDays * DAY;
     const endMs = now - toDays * DAY;
-    const typeParam = url.searchParams.get('type'); // glucose, insulin, activity, or all
+    const typeParam = url.searchParams.get('type');
 
     const empty = { inserted: 0, skipped: 0 };
     const glucose = (!typeParam || typeParam === 'glucose')
@@ -59,7 +53,7 @@ export const POST: APIRoute = async ({ url, request }) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('[api/health/sync]', msg, e);
+    console.error('[private/api/sync]', msg, e);
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

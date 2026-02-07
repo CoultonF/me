@@ -58,7 +58,7 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch('/api/health/sync', { method: 'POST' });
+      const res = await fetch('/private/api/sync', { method: 'POST' });
       if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
       await fetchData(range);
     } catch (e) {

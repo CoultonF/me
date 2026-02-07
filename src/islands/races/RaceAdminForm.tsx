@@ -119,7 +119,7 @@ export default function RaceAdminForm() {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this race?')) return;
     try {
-      const res = await fetch('/api/health/races-admin', {
+      const res = await fetch('/private/api/races-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', id }),
@@ -168,7 +168,7 @@ export default function RaceAdminForm() {
         ? { action: 'update' as const, id: editingId, race: racePayload, result: resultPayload }
         : { action: 'create' as const, race: racePayload, result: resultPayload };
 
-      const res = await fetch('/api/health/races-admin', {
+      const res = await fetch('/private/api/races-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

@@ -4,10 +4,11 @@ export function useAuth() {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/check')
-      .then((res) => res.ok ? res.json() as Promise<{ authenticated: boolean }> : null)
-      .then((data) => {
-        if (data?.authenticated) setAuthenticated(true);
+    // Hit a private path — if CF Access blocks it, the response
+    // won't be JSON (it'll be a redirect/login page), so we stay false.
+    fetch('/private/api/auth-check', { redirect: 'manual' })
+      .then((res) => {
+        if (res.ok) setAuthenticated(true);
       })
       .catch(() => {});
   }, []);

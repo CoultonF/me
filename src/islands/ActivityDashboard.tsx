@@ -74,7 +74,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch('/api/health/sync', { method: 'POST' });
+      const res = await fetch('/private/api/sync', { method: 'POST' });
       if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
       await fetchData(range);
     } catch (e) {
