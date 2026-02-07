@@ -119,10 +119,12 @@ function PaceHRScatter({ paceHRCorrelation }: { paceHRCorrelation: PaceHRPoint[]
     );
   }
 
-  const data = paceHRCorrelation.map((p) => ({
-    ...p,
-    paceMin: p.avgPaceSecPerKm / 60,
-  }));
+  const data = paceHRCorrelation
+    .filter((p) => p.avgHeartRate >= 130 && p.avgHeartRate <= 190)
+    .map((p) => ({
+      ...p,
+      paceMin: p.avgPaceSecPerKm / 60,
+    }));
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
@@ -132,6 +134,7 @@ function PaceHRScatter({ paceHRCorrelation }: { paceHRCorrelation: PaceHRPoint[]
           <XAxis
             dataKey="avgHeartRate"
             type="number"
+            domain={[130, 190]}
             name="HR"
             unit=" bpm"
             tick={{ fontSize: 11, fill: 'var(--color-dim)' }}
@@ -159,7 +162,7 @@ function PaceHRScatter({ paceHRCorrelation }: { paceHRCorrelation: PaceHRPoint[]
 
 function EfficiencyTrend({ workouts }: { workouts: Workout[] }) {
   const data = workouts
-    .filter((w) => w.avgHeartRate && w.avgHeartRate > 0 && w.avgPaceSecPerKm && w.avgPaceSecPerKm > 0)
+    .filter((w) => w.avgHeartRate && w.avgHeartRate >= 130 && w.avgHeartRate <= 190 && w.avgPaceSecPerKm && w.avgPaceSecPerKm > 0)
     .map((w) => ({
       ts: new Date(w.startTime).getTime(),
       efficiency: Math.round(((w.avgPaceSecPerKm! / 60) / w.avgHeartRate!) * 1000) / 10,

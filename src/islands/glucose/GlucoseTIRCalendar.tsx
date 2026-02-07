@@ -1,19 +1,29 @@
 import { useState, useEffect } from 'react';
 import type { GlucoseAPIResponse, GlucoseDailyTIR } from '../../lib/types/glucose';
 
-const DAYS = 365;
-
 interface DayData {
   date: string;
   tirPercent: number;
   count: number;
 }
 
-function buildCalendarData(tirData: GlucoseDailyTIR[]): DayData[] {
+function useDays(): number {
+  const [days, setDays] = useState(365);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    setDays(mq.matches ? 365 : 90);
+    const handler = (e: MediaQueryListEvent) => setDays(e.matches ? 365 : 90);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return days;
+}
+
+function buildCalendarData(tirData: GlucoseDailyTIR[], days: number): DayData[] {
   const now = new Date();
   const map = new Map<string, DayData>();
 
-  for (let i = DAYS - 1; i >= 0; i--) {
+  for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
@@ -35,7 +45,7 @@ function getIntensityClass(d: DayData): string {
   if (d.count === 0) return 'bg-stroke-soft';
   if (d.tirPercent < 50) return 'bg-glucose-low/80';
   if (d.tirPercent < 70) return 'bg-glucose-very-high/70';
-  if (d.tirPercent < 85) return 'bg-glucose-high/70';
+  if (d.tirPercent < 85) return 'bg-glucose-good/70';
   return 'bg-glucose-normal/80';
 }
 
@@ -48,15 +58,17 @@ function formatDateLabel(date: string): string {
 }
 
 export default function GlucoseTIRCalendar() {
+  const days = useDays();
   const [tirData, setTirData] = useState<GlucoseDailyTIR[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/api/health/glucose?range=365d')
+    setLoaded(false);
+    fetch(`/api/health/glucose?range=${days}d`)
       .then((r) => r.json() as Promise<GlucoseAPIResponse>)
       .then((d) => { setTirData(d.dailyTIR ?? []); setLoaded(true); })
       .catch(() => setLoaded(true));
-  }, []);
+  }, [days]);
 
   if (!loaded) {
     return (
@@ -66,7 +78,7 @@ export default function GlucoseTIRCalendar() {
     );
   }
 
-  const data = buildCalendarData(tirData);
+  const data = buildCalendarData(tirData, days);
   const daysWithData = data.filter((d) => d.count > 0).length;
 
   return <GridView data={data} daysWithData={daysWithData} />;
@@ -129,7 +141,7 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
         {weeks.map((_, wi) => {
           const ml = monthLabels.find((m) => m.index === wi);
           return (
-            <div key={wi} className="text-[10px] text-dim leading-none truncate">
+            <div key={wi} className="text-[10px] text-dim leading-none">
               {ml?.label ?? ''}
             </div>
           );
@@ -176,7 +188,7 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
         <span>&lt; 50%</span>
         <div className="size-3 rounded-sm bg-glucose-low/80" />
         <div className="size-3 rounded-sm bg-glucose-very-high/70" />
-        <div className="size-3 rounded-sm bg-glucose-high/70" />
+        <div className="size-3 rounded-sm bg-glucose-good/70" />
         <div className="size-3 rounded-sm bg-glucose-normal/80" />
         <span>&gt; 85%</span>
       </div>

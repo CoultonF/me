@@ -24,6 +24,7 @@
   --color-glucose-normal: #22c55e;
   --color-glucose-high: #f59e0b;
   --color-glucose-very-high: #f97316;
+  --color-glucose-good: #84cc16;
 
   /* ── Glucose chart zone backgrounds (muted, Dexcom-inspired) ── */
   --color-glucose-zone-low: #d48a8a;

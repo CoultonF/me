@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
 import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 
-const DAYS = 365;
+function useDays(): number {
+  const [days, setDays] = useState(365);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    setDays(mq.matches ? 365 : 90);
+    const handler = (e: MediaQueryListEvent) => setDays(e.matches ? 365 : 90);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return days;
+}
 
 interface DayData {
   date: string;
@@ -11,7 +21,7 @@ interface DayData {
   names: string[];
 }
 
-function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] {
+function buildCalendarData(workouts: Workout[], days: number): DayData[] {
   const now = new Date();
   const map = new Map<string, DayData>();
 
@@ -54,15 +64,17 @@ function formatDateLabel(date: string): string {
 }
 
 export default function ActivityCalendar() {
+  const days = useDays();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/api/health/activity?range=365d')
+    setLoaded(false);
+    fetch(`/api/health/activity?range=${days}d`)
       .then((r) => r.json() as Promise<ActivityAPIResponse>)
       .then((d) => { setWorkouts(d.workouts); setLoaded(true); })
       .catch(() => setLoaded(true));
-  }, []);
+  }, [days]);
 
   if (!loaded) {
     return (
@@ -72,7 +84,7 @@ export default function ActivityCalendar() {
     );
   }
 
-  const data = buildCalendarData(workouts);
+  const data = buildCalendarData(workouts, days);
   const activeDays = data.filter((d) => d.count > 0).length;
 
   return <GridView data={data} activeDays={activeDays} />;
@@ -137,7 +149,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
         {weeks.map((_, wi) => {
           const ml = monthLabels.find((m) => m.index === wi);
           return (
-            <div key={wi} className="text-[10px] text-dim leading-none truncate">
+            <div key={wi} className="text-[10px] text-dim leading-none">
               {ml?.label ?? ''}
             </div>
           );
