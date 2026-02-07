@@ -11,8 +11,21 @@ interface Props {
 
 const Y_MIN = 2.0;
 const Y_MAX = 22.0;
-const RANGE_LOW = 3.9;
+const RANGE_LOW = 4.0;
 const RANGE_HIGH = 10.0;
+
+function getSegmentColor(v1: number, v2: number): string {
+  const avg = (v1 + v2) / 2;
+  if (avg < RANGE_LOW) return 'var(--color-glucose-low)';
+  if (avg > RANGE_HIGH) return 'var(--color-glucose-very-high)';
+  return 'var(--color-glucose-normal)';
+}
+
+interface Point {
+  x: number;
+  y: number;
+  value: number;
+}
 
 export default function BgSparkline({ readings, width, height }: Props) {
   if (readings.length < 5) return null;
@@ -22,17 +35,29 @@ export default function BgSparkline({ readings, width, height }: Props) {
     return height - ((clamped - Y_MIN) / (Y_MAX - Y_MIN)) * height;
   };
 
-  const rangeTop = yScale(RANGE_HIGH);
-  const rangeBottom = yScale(RANGE_LOW);
-
-  // Map readings to minutes-in-day for X axis
-  const points = readings.map((r) => {
+  const points: Point[] = readings.map((r) => {
     const d = new Date(r.timestamp);
     const minuteOfDay = d.getHours() * 60 + d.getMinutes();
-    const x = (minuteOfDay / 1440) * width;
-    const y = yScale(r.value);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return {
+      x: (minuteOfDay / 1440) * width,
+      y: yScale(r.value),
+      value: r.value,
+    };
   });
+
+  // Build colored line segments
+  const segments: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    segments.push({
+      x1: a.x,
+      y1: a.y,
+      x2: b.x,
+      y2: b.y,
+      color: getSegmentColor(a.value, b.value),
+    });
+  }
 
   return (
     <svg
@@ -41,22 +66,18 @@ export default function BgSparkline({ readings, width, height }: Props) {
       viewBox={`0 0 ${width} ${height}`}
       className="block"
     >
-      <rect
-        x={0}
-        y={rangeTop}
-        width={width}
-        height={rangeBottom - rangeTop}
-        fill="var(--color-glucose-normal)"
-        opacity={0.1}
-      />
-      <polyline
-        points={points.join(' ')}
-        fill="none"
-        stroke="var(--color-glucose-normal)"
-        strokeWidth={1.2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      {segments.map((s, i) => (
+        <line
+          key={i}
+          x1={s.x1}
+          y1={s.y1}
+          x2={s.x2}
+          y2={s.y2}
+          stroke={s.color}
+          strokeWidth={1.2}
+          strokeLinecap="round"
+        />
+      ))}
     </svg>
   );
 }

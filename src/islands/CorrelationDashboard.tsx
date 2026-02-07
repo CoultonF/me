@@ -108,8 +108,6 @@ export default function CorrelationDashboard() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-heading">Dashboard</h2>
-
       {loading || !days ? (
         <div className="space-y-6">
           <CardsSkeleton count={3} columns={3} />
