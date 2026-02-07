@@ -1,11 +1,8 @@
 import type { APIRoute } from 'astro';
+import { isAuthenticated } from '@/lib/auth';
 
 export const GET: APIRoute = async ({ request }) => {
-  // Cloudflare Access sets this header on authenticated requests
-  const jwt = request.headers.get('Cf-Access-Jwt-Assertion');
-  const authenticated = !!jwt;
-
-  return new Response(JSON.stringify({ authenticated }), {
+  return new Response(JSON.stringify({ authenticated: isAuthenticated(request) }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };

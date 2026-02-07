@@ -3,8 +3,12 @@ import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
 import { getTidepoolSession } from '@/lib/tidepool/client';
 import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '@/lib/tidepool/sync';
+import { requireAuth } from '@/lib/auth';
 
-export const POST: APIRoute = async ({ url }) => {
+export const POST: APIRoute = async ({ url, request }) => {
+  const denied = requireAuth(request);
+  if (denied) return denied;
+
   try {
     const cfEnv = await getCloudflareEnv();
     if (!cfEnv) {
