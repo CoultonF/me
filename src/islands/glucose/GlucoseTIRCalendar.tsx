@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { GlucoseAPIResponse, GlucoseDailyTIR } from '../../lib/types/glucose';
+import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 
-const CELL = 10;
+const MIN_CELL = 10;
 const GAP = 3;
 const DAY_W = 24;
 
@@ -75,6 +76,8 @@ export default function GlucoseTIRCalendar() {
 }
 
 function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: number }) {
+  const [containerRef, containerWidth] = useContainerWidth();
+
   const weeks: DayData[][] = [];
   let currentWeek: DayData[] = [];
 
@@ -98,6 +101,11 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
     weeks.push(currentWeek);
   }
 
+  const cols = weeks.length;
+  const cellSize = containerWidth > 0
+    ? computeCellSize(containerWidth, cols, DAY_W, GAP, MIN_CELL)
+    : MIN_CELL;
+
   // Month labels with pixel positions
   const monthLabels: { label: string; x: number }[] = [];
   let lastMonth = '';
@@ -106,18 +114,17 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
       if (d.count < 0 || !d.date) continue;
       const month = new Date(d.date + 'T12:00:00').toLocaleDateString([], { month: 'short' });
       if (month !== lastMonth) {
-        monthLabels.push({ label: month, x: wi * (CELL + GAP) });
+        monthLabels.push({ label: month, x: wi * (cellSize + GAP) });
         lastMonth = month;
       }
       break;
     }
   });
 
-  const cols = weeks.length;
-  const gridW = cols * CELL + (cols - 1) * GAP;
+  const gridW = cols * cellSize + (cols - 1) * GAP;
 
   return (
-    <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
+    <div ref={containerRef} className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="text-xs font-medium text-dim uppercase tracking-wide">Time in Range</div>
         <div className="text-xs text-dim">
@@ -140,7 +147,7 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
           <div className="flex">
             <div className="shrink-0 flex flex-col" style={{ width: DAY_W, gap: GAP }}>
               {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((l, i) => (
-                <div key={i} className="flex items-center text-[10px] text-dim" style={{ height: CELL }}>
+                <div key={i} className="flex items-center text-[10px] text-dim" style={{ height: cellSize }}>
                   {l}
                 </div>
               ))}
@@ -149,8 +156,8 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
             <div
               className="grid"
               style={{
-                gridTemplateRows: `repeat(7, ${CELL}px)`,
-                gridTemplateColumns: `repeat(${cols}, ${CELL}px)`,
+                gridTemplateRows: `repeat(7, ${cellSize}px)`,
+                gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
                 gridAutoFlow: 'column',
                 gap: GAP,
               }}
