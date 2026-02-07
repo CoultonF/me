@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 
-function useDays(): number {
-  const [days, setDays] = useState(365);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
-    setDays(mq.matches ? 365 : 90);
-    const handler = (e: MediaQueryListEvent) => setDays(e.matches ? 365 : 90);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return days;
-}
+const CELL = 10;
+const GAP = 3;
+const DAY_W = 24;
 
 interface DayData {
   date: string;
@@ -21,11 +13,11 @@ interface DayData {
   names: string[];
 }
 
-function buildCalendarData(workouts: Workout[], days: number): DayData[] {
+function buildCalendarData(workouts: Workout[]): DayData[] {
   const now = new Date();
   const map = new Map<string, DayData>();
 
-  for (let i = days - 1; i >= 0; i--) {
+  for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
@@ -64,17 +56,15 @@ function formatDateLabel(date: string): string {
 }
 
 export default function ActivityCalendar() {
-  const days = useDays();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setLoaded(false);
-    fetch(`/api/health/activity?range=${days}d`)
+    fetch('/api/health/activity?range=365d')
       .then((r) => r.json() as Promise<ActivityAPIResponse>)
       .then((d) => { setWorkouts(d.workouts); setLoaded(true); })
       .catch(() => setLoaded(true));
-  }, [days]);
+  }, []);
 
   if (!loaded) {
     return (
@@ -84,23 +74,20 @@ export default function ActivityCalendar() {
     );
   }
 
-  const data = buildCalendarData(workouts, days);
+  const data = buildCalendarData(workouts);
   const activeDays = data.filter((d) => d.count > 0).length;
 
   return <GridView data={data} activeDays={activeDays} />;
 }
 
-// ── 365-day compact grid heatmap ──
-
 function GridView({ data, activeDays }: { data: DayData[]; activeDays: number }) {
   const weeks: DayData[][] = [];
   let currentWeek: DayData[] = [];
 
-  // Pad first week to start on Monday
+  // Pad first week so column starts on Sunday
   if (data.length > 0) {
-    const firstDay = new Date(data[0]!.date + 'T12:00:00').getDay();
-    const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
-    for (let i = 0; i < mondayOffset; i++) {
+    const firstDow = new Date(data[0]!.date + 'T12:00:00').getDay();
+    for (let i = 0; i < firstDow; i++) {
       currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [] });
     }
   }
@@ -113,18 +100,19 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
     }
   }
   if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [] });
     weeks.push(currentWeek);
   }
 
-  // Month labels
-  const monthLabels: { label: string; index: number }[] = [];
+  // Month labels with pixel positions
+  const monthLabels: { label: string; x: number }[] = [];
   let lastMonth = '';
   weeks.forEach((week, wi) => {
     for (const d of week) {
       if (d.count < 0 || !d.date) continue;
       const month = new Date(d.date + 'T12:00:00').toLocaleDateString([], { month: 'short' });
       if (month !== lastMonth) {
-        monthLabels.push({ label: month, index: wi });
+        monthLabels.push({ label: month, x: wi * (CELL + GAP) });
         lastMonth = month;
       }
       break;
@@ -132,7 +120,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
   });
 
   const cols = weeks.length;
-  const gridCols = `14px repeat(${cols}, 1fr)`;
+  const gridW = cols * CELL + (cols - 1) * GAP;
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
@@ -143,56 +131,64 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
         </div>
       </div>
 
-      <div className="grid gap-[3px]" style={{ gridTemplateColumns: gridCols, gridTemplateRows: `auto repeat(7, 1fr)` }}>
-        {/* Row 0: month labels */}
-        <div /> {/* empty corner */}
-        {weeks.map((_, wi) => {
-          const ml = monthLabels.find((m) => m.index === wi);
-          return (
-            <div key={wi} className="text-[10px] text-dim leading-none">
-              {ml?.label ?? ''}
-            </div>
-          );
-        })}
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: DAY_W + gridW }}>
+          {/* Month labels */}
+          <div className="relative" style={{ height: 15, marginLeft: DAY_W }}>
+            {monthLabels.map((m, i) => (
+              <span key={i} className="absolute text-[10px] text-dim leading-none" style={{ left: m.x }}>
+                {m.label}
+              </span>
+            ))}
+          </div>
 
-        {/* Rows 1-7: day labels + cells */}
-        {[0, 1, 2, 3, 4, 5, 6].map((row) => {
-          const dayLabels = ['M', '', 'W', '', 'F', '', 'S'];
-          return [
-            <div key={`label-${row}`} className="text-[10px] text-dim flex items-center justify-end leading-none pr-0.5">
-              {dayLabels[row]}
-            </div>,
-            ...weeks.map((week, wi) => {
-              const d = week[row];
-              if (!d) return <div key={`${wi}-${row}`} />;
-              return (
-                <div key={`${wi}-${row}`} className="relative group">
-                  <div
-                    className={`aspect-square w-full rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d)}`}
-                  />
-                  {d.count >= 0 && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
-                      <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                        <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
-                        {d.count === 0 ? (
-                          <div className="text-dim mt-0.5">Rest day</div>
-                        ) : (
-                          <>
-                            <div className="text-subtle mt-0.5">
-                              {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
-                              {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
-                            </div>
-                            <div className="text-dim">{d.names.join(', ')}</div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+          {/* Day labels + cells */}
+          <div className="flex">
+            <div className="shrink-0 flex flex-col" style={{ width: DAY_W, gap: GAP }}>
+              {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((l, i) => (
+                <div key={i} className="flex items-center text-[10px] text-dim" style={{ height: CELL }}>
+                  {l}
                 </div>
-              );
-            }),
-          ];
-        })}
+              ))}
+            </div>
+
+            <div
+              className="grid"
+              style={{
+                gridTemplateRows: `repeat(7, ${CELL}px)`,
+                gridTemplateColumns: `repeat(${cols}, ${CELL}px)`,
+                gridAutoFlow: 'column',
+                gap: GAP,
+              }}
+            >
+              {weeks.flatMap((week, wi) =>
+                week.map((d, di) => (
+                  <div key={`${wi}-${di}`} className="relative group">
+                    <div className={`size-full rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d)}`} />
+                    {d.count >= 0 && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+                        <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
+                          <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
+                          {d.count === 0 ? (
+                            <div className="text-dim mt-0.5">Rest day</div>
+                          ) : (
+                            <>
+                              <div className="text-subtle mt-0.5">
+                                {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
+                                {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
+                              </div>
+                              <div className="text-dim">{d.names.join(', ')}</div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Legend */}
