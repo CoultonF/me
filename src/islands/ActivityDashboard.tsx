@@ -14,6 +14,7 @@ import HRAnalysis from './running/HRAnalysis';
 import TargetRaceCountdown from './races/TargetRaceCountdown';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
+import { useAuth } from './shared/useAuth';
 
 type Range = '7d' | '30d' | '90d';
 
@@ -49,6 +50,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const isAdmin = useAuth();
 
   const fetchData = useCallback(async (r: Range) => {
     setLoading(true);
@@ -116,13 +118,15 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-heading">Activity</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
-          >
-            {syncing ? 'Syncing...' : 'Sync'}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
+            >
+              {syncing ? 'Syncing...' : 'Sync'}
+            </button>
+          )}
           <DateRangePicker selected={range} onChange={setRange} />
         </div>
       </div>

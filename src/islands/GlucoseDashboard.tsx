@@ -8,6 +8,7 @@ import DateRangePicker from './glucose/DateRangePicker';
 import GlucoseTIRCalendar from './glucose/GlucoseTIRCalendar';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
+import { useAuth } from './shared/useAuth';
 
 type Range = '24h' | '7d' | '30d' | '90d';
 
@@ -29,6 +30,7 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const isAdmin = useAuth();
 
   const fetchData = useCallback(async (r: Range) => {
     setLoading(true);
@@ -93,13 +95,15 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-heading">Glucose</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
-          >
-            {syncing ? 'Syncing...' : 'Sync'}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
+            >
+              {syncing ? 'Syncing...' : 'Sync'}
+            </button>
+          )}
           <DateRangePicker selected={range} onChange={handleRangeChange} />
         </div>
       </div>
