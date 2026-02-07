@@ -49,6 +49,7 @@ export default function CodeDashboard({ initialRange = '90d' }: Props) {
   const [ghRange, setGhRange] = useState<GitHubRange>(initialRange);
   const [claudeRange, setClaudeRange] = useState<ClaudeRange>('30d');
   const [ghData, setGhData] = useState<GitHubData | null>(null);
+  const [calendarData, setCalendarData] = useState<Pick<GitHubData, 'contributions' | 'totalContributions' | 'currentStreak' | 'longestStreak'> | null>(null);
   const [claudeData, setClaudeData] = useState<ClaudeData | null>(null);
   const [ghLoading, setGhLoading] = useState(true);
   const [claudeLoading, setClaudeLoading] = useState(true);
@@ -56,12 +57,38 @@ export default function CodeDashboard({ initialRange = '90d' }: Props) {
   const [syncing, setSyncing] = useState(false);
   const isAdmin = useAuth();
 
+  const fetchCalendar = useCallback(async () => {
+    try {
+      const res = await fetch('/api/code/github?range=365d');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as GitHubData;
+      setCalendarData({
+        contributions: data.contributions,
+        totalContributions: data.totalContributions,
+        currentStreak: data.currentStreak,
+        longestStreak: data.longestStreak,
+      });
+    } catch {
+      // calendar will just not render
+    }
+  }, []);
+
   const fetchGitHub = useCallback(async (r: GitHubRange) => {
     setGhLoading(true);
     try {
       const res = await fetch(`/api/code/github?range=${r}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setGhData(await res.json() as GitHubData);
+      const data = await res.json() as GitHubData;
+      setGhData(data);
+      // If we fetched 365d, also use it for the calendar
+      if (r === '365d') {
+        setCalendarData({
+          contributions: data.contributions,
+          totalContributions: data.totalContributions,
+          currentStreak: data.currentStreak,
+          longestStreak: data.longestStreak,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load GitHub data');
     } finally {
@@ -82,6 +109,7 @@ export default function CodeDashboard({ initialRange = '90d' }: Props) {
     }
   }, []);
 
+  useEffect(() => { fetchCalendar(); }, [fetchCalendar]);
   useEffect(() => { fetchGitHub(ghRange); }, [ghRange, fetchGitHub]);
   useEffect(() => { fetchClaude(claudeRange); }, [claudeRange, fetchClaude]);
 
@@ -91,7 +119,7 @@ export default function CodeDashboard({ initialRange = '90d' }: Props) {
     try {
       const res = await fetch('/private/api/sync-code', { method: 'POST' });
       if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
-      await Promise.all([fetchGitHub(ghRange), fetchClaude(claudeRange)]);
+      await Promise.all([fetchCalendar(), fetchGitHub(ghRange), fetchClaude(claudeRange)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed');
     } finally {
@@ -159,14 +187,16 @@ export default function CodeDashboard({ initialRange = '90d' }: Props) {
           </div>
         ) : ghData ? (
           <div className="space-y-4">
-            <ErrorBoundary fallbackTitle="Contribution calendar failed to load">
-              <ContributionCalendar
-                contributions={ghData.contributions}
-                totalContributions={ghData.totalContributions}
-                currentStreak={ghData.currentStreak}
-                longestStreak={ghData.longestStreak}
-              />
-            </ErrorBoundary>
+            {calendarData && (
+              <ErrorBoundary fallbackTitle="Contribution calendar failed to load">
+                <ContributionCalendar
+                  contributions={calendarData.contributions}
+                  totalContributions={calendarData.totalContributions}
+                  currentStreak={calendarData.currentStreak}
+                  longestStreak={calendarData.longestStreak}
+                />
+              </ErrorBoundary>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ErrorBoundary fallbackTitle="Language chart failed to load">
