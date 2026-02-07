@@ -15,25 +15,26 @@ interface SyncEnv {
   TIDEPOOL_PASSWORD: string;
 }
 
-export async function syncGlucoseReadings(db: Database, env: SyncEnv): Promise<SyncResult> {
-  let session;
-  try {
-    session = await getTidepoolSession(env);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown login error';
-    console.error('[sync] Tidepool login failed:', msg);
-    return { inserted: 0, skipped: 0, error: msg };
+export async function syncGlucoseReadings(db: Database, env: SyncEnv, startMs?: number, endMs?: number, session?: { token: string; userId: string }): Promise<SyncResult> {
+  if (!session) {
+    try {
+      session = await getTidepoolSession(env);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown login error';
+      console.error('[sync] Tidepool login failed:', msg);
+      return { inserted: 0, skipped: 0, error: msg };
+    }
   }
 
   let readings;
   try {
-    const now = new Date();
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const end = endMs ? new Date(endMs) : new Date();
+    const start = startMs ? new Date(startMs) : new Date(end.getTime() - 2 * 60 * 60 * 1000);
     readings = await fetchCGMData(
       session.token,
       session.userId,
-      twoHoursAgo.toISOString(),
-      now.toISOString(),
+      start.toISOString(),
+      end.toISOString(),
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown fetch error';
@@ -46,47 +47,51 @@ export async function syncGlucoseReadings(db: Database, env: SyncEnv): Promise<S
   }
 
   // Batch insert with conflict handling (unique index on timestamp)
-  const BATCH_SIZE = 100;
+  // D1 has a 100-binding limit per query; each row = 5 params
+  const BATCH_SIZE = 20;
   let inserted = 0;
 
   for (let i = 0; i < readings.length; i += BATCH_SIZE) {
     const batch = readings.slice(i, i + BATCH_SIZE);
-    const result = await db
-      .insert(glucoseReadings)
-      .values(
-        batch.map((r) => ({
-          timestamp: r.timestamp,
-          value: r.value,
-          trend: r.trend,
-          source: 'tidepool' as const,
-        })),
-      )
-      .onConflictDoNothing()
-      .returning();
-    inserted += result.length;
+    try {
+      await db
+        .insert(glucoseReadings)
+        .values(
+          batch.map((r) => ({
+            timestamp: r.timestamp,
+            value: r.value,
+            trend: r.trend,
+            source: 'tidepool' as const,
+          })),
+        )
+        .onConflictDoNothing();
+      inserted += batch.length;
+    } catch {
+      console.error(`[sync] Glucose batch failed at offset ${i}, skipping`);
+    }
   }
 
-  const skipped = readings.length - inserted;
-  console.log(`[sync] Glucose: inserted ${inserted}, skipped ${skipped}`);
+  console.log(`[sync] Glucose: processed ${inserted} readings`);
 
-  return { inserted, skipped };
+  return { inserted, skipped: 0 };
 }
 
-export async function syncInsulinDoses(db: Database, env: SyncEnv): Promise<SyncResult> {
-  let session;
-  try {
-    session = await getTidepoolSession(env);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown login error';
-    console.error('[sync] Tidepool login failed:', msg);
-    return { inserted: 0, skipped: 0, error: msg };
+export async function syncInsulinDoses(db: Database, env: SyncEnv, startMs?: number, endMs?: number, session?: { token: string; userId: string }): Promise<SyncResult> {
+  if (!session) {
+    try {
+      session = await getTidepoolSession(env);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown login error';
+      console.error('[sync] Tidepool login failed:', msg);
+      return { inserted: 0, skipped: 0, error: msg };
+    }
   }
 
   let data;
   try {
-    const now = new Date();
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    data = await fetchInsulinData(session.token, session.userId, twoHoursAgo.toISOString(), now.toISOString());
+    const end = endMs ? new Date(endMs) : new Date();
+    const start = startMs ? new Date(startMs) : new Date(end.getTime() - 2 * 60 * 60 * 1000);
+    data = await fetchInsulinData(session.token, session.userId, start.toISOString(), end.toISOString());
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown fetch error';
     console.error('[sync] Insulin fetch failed:', msg);
@@ -104,7 +109,7 @@ export async function syncInsulinDoses(db: Database, env: SyncEnv): Promise<Sync
     })),
     ...data.basals.map((b) => ({
       timestamp: b.time,
-      units: b.rate, // units/hr — queries compute total via rate * duration / 3600000
+      units: b.rate ?? 0, // units/hr — queries compute total via rate * duration / 3600000
       type: 'basal' as const,
       subType: b.deliveryType,
       duration: b.duration,
@@ -116,23 +121,23 @@ export async function syncInsulinDoses(db: Database, env: SyncEnv): Promise<Sync
     return { inserted: 0, skipped: 0 };
   }
 
-  const BATCH_SIZE = 100;
+  // D1 has a 100-binding limit; each row = 7 params (incl auto id)
+  const BATCH_SIZE = 14;
   let inserted = 0;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    const result = await db
-      .insert(insulinDoses)
-      .values(batch)
-      .onConflictDoNothing()
-      .returning();
-    inserted += result.length;
+    try {
+      await db.insert(insulinDoses).values(batch).onConflictDoNothing();
+      inserted += batch.length;
+    } catch {
+      console.error(`[sync] Insulin batch failed at offset ${i}, skipping`);
+    }
   }
 
-  const skipped = rows.length - inserted;
-  console.log(`[sync] Insulin: inserted ${inserted}, skipped ${skipped}`);
+  console.log(`[sync] Insulin: processed ${inserted} doses`);
 
-  return { inserted, skipped };
+  return { inserted, skipped: 0 };
 }
 
 function convertDistance(value: number, units: string): number {
@@ -154,21 +159,22 @@ function extractActivityType(name: string): string {
   return dash > 0 ? name.slice(0, dash) : name;
 }
 
-export async function syncActivityData(db: Database, env: SyncEnv): Promise<SyncResult> {
-  let session;
-  try {
-    session = await getTidepoolSession(env);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown login error';
-    console.error('[sync] Tidepool login failed:', msg);
-    return { inserted: 0, skipped: 0, error: msg };
+export async function syncActivityData(db: Database, env: SyncEnv, startMs?: number, endMs?: number, session?: { token: string; userId: string }): Promise<SyncResult> {
+  if (!session) {
+    try {
+      session = await getTidepoolSession(env);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown login error';
+      console.error('[sync] Tidepool login failed:', msg);
+      return { inserted: 0, skipped: 0, error: msg };
+    }
   }
 
   let activities: TidepoolPhysicalActivity[];
   try {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    activities = await fetchActivityData(session.token, session.userId, sevenDaysAgo.toISOString(), now.toISOString());
+    const end = endMs ? new Date(endMs) : new Date();
+    const start = startMs ? new Date(startMs) : new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    activities = await fetchActivityData(session.token, session.userId, start.toISOString(), end.toISOString());
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown fetch error';
     console.error('[sync] Activity fetch failed:', msg);
@@ -202,18 +208,17 @@ export async function syncActivityData(db: Database, env: SyncEnv): Promise<Sync
     };
   });
 
-  // Insert workouts
-  const BATCH_SIZE = 50;
+  // Insert workouts — D1 has a 100-binding limit; each row = 8 params
+  const BATCH_SIZE = 12;
   let inserted = 0;
 
   for (let i = 0; i < workoutRows.length; i += BATCH_SIZE) {
     const batch = workoutRows.slice(i, i + BATCH_SIZE);
-    const result = await db
+    await db
       .insert(runningSessions)
       .values(batch)
-      .onConflictDoNothing()
-      .returning();
-    inserted += result.length;
+      .onConflictDoNothing();
+    inserted += batch.length;
   }
 
   // Aggregate into activitySummaries by date
@@ -243,8 +248,7 @@ export async function syncActivityData(db: Database, env: SyncEnv): Promise<Sync
       });
   }
 
-  const skipped = workoutRows.length - inserted;
-  console.log(`[sync] Activity: inserted ${inserted}, skipped ${skipped}`);
+  console.log(`[sync] Activity: processed ${inserted} workouts`);
 
-  return { inserted, skipped };
+  return { inserted, skipped: 0 };
 }

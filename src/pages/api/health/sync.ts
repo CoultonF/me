@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
+import { getTidepoolSession } from '@/lib/tidepool/client';
 import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '@/lib/tidepool/sync';
 
-export const POST: APIRoute = async () => {
+export const POST: APIRoute = async ({ url }) => {
   try {
     const cfEnv = await getCloudflareEnv();
     if (!cfEnv) {
@@ -14,19 +15,48 @@ export const POST: APIRoute = async () => {
     }
 
     const db = createDb(cfEnv.DB);
+    const fromParam = url.searchParams.get('from'); // days ago for window start
+    const toParam = url.searchParams.get('to');     // days ago for window end (default 0 = now)
 
-    const [glucose, insulin, activity] = await Promise.all([
-      syncGlucoseReadings(db, cfEnv),
-      syncInsulinDoses(db, cfEnv),
-      syncActivityData(db, cfEnv),
-    ]);
+    // Normal sync — small default windows, parallel
+    if (!fromParam) {
+      const [glucose, insulin, activity] = await Promise.all([
+        syncGlucoseReadings(db, cfEnv),
+        syncInsulinDoses(db, cfEnv),
+        syncActivityData(db, cfEnv),
+      ]);
+      return new Response(JSON.stringify({ glucose, insulin, activity }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Backfill — login once, optionally filter by type to stay within CPU limits
+    // ?from=90&to=60&type=insulin → fetch 90 days ago to 60 days ago
+    // ?from=90&type=glucose → fetch 90 days ago to now
+    const session = await getTidepoolSession(cfEnv);
+    const fromDays = parseInt(fromParam, 10);
+    const toDays = toParam ? parseInt(toParam, 10) : 0;
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const startMs = now - fromDays * DAY;
+    const endMs = now - toDays * DAY;
+    const typeParam = url.searchParams.get('type'); // glucose, insulin, activity, or all
+
+    const empty = { inserted: 0, skipped: 0 };
+    const glucose = (!typeParam || typeParam === 'glucose')
+      ? await syncGlucoseReadings(db, cfEnv, startMs, endMs, session) : empty;
+    const insulin = (!typeParam || typeParam === 'insulin')
+      ? await syncInsulinDoses(db, cfEnv, startMs, endMs, session) : empty;
+    const activity = (!typeParam || typeParam === 'activity')
+      ? await syncActivityData(db, cfEnv, startMs, endMs, session) : empty;
 
     return new Response(JSON.stringify({ glucose, insulin, activity }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    console.error('[api/health/sync]', e);
-    return new Response(JSON.stringify({ error: 'Sync failed' }), {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[api/health/sync]', msg, e);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

@@ -8,6 +8,7 @@ const RANGE_MS: Record<string, number> = {
   '24h': 24 * 60 * 60 * 1000,
   '7d': 7 * 24 * 60 * 60 * 1000,
   '30d': 30 * 24 * 60 * 60 * 1000,
+  '90d': 90 * 24 * 60 * 60 * 1000,
 };
 
 const emptyResponse: GlucoseAPIResponse = {
