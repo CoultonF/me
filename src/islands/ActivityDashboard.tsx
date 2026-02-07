@@ -10,7 +10,6 @@ import DateRangePicker from './activity/DateRangePicker';
 import RunningSummaryCards from './running/RunningSummaryCards';
 import PaceProgression from './running/PaceProgression';
 import DistanceVolume from './running/DistanceVolume';
-import TrainingCalendar from './running/TrainingCalendar';
 import HRAnalysis from './running/HRAnalysis';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
@@ -173,10 +172,6 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
 
           <ErrorBoundary fallbackTitle="Distance chart failed to load">
             <DistanceVolume weeklyDistances={data?.weeklyDistances ?? []} />
-          </ErrorBoundary>
-
-          <ErrorBoundary fallbackTitle="Training calendar failed to load">
-            <TrainingCalendar />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="HR analysis failed to load">

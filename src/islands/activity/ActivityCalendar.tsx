@@ -7,6 +7,7 @@ interface DayData {
   date: string;
   count: number;
   totalMinutes: number;
+  totalDistanceKm: number;
   names: string[];
 }
 
@@ -18,7 +19,7 @@ function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] 
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    map.set(key, { date: key, count: 0, totalMinutes: 0, names: [] });
+    map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [] });
   }
 
   for (const w of workouts) {
@@ -27,6 +28,7 @@ function buildCalendarData(workouts: Workout[], days: number = DAYS): DayData[] 
     if (entry) {
       entry.count++;
       entry.totalMinutes += w.durationSeconds ? Math.round(w.durationSeconds / 60) : 0;
+      entry.totalDistanceKm += w.distanceKm ?? 0;
       if (w.activityName && !entry.names.includes(w.activityName)) {
         entry.names.push(w.activityName);
       }
@@ -87,7 +89,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
     const firstDay = new Date(data[0]!.date + 'T12:00:00').getDay();
     const mondayOffset = firstDay === 0 ? 6 : firstDay - 1;
     for (let i = 0; i < mondayOffset; i++) {
-      currentWeek.push({ date: '', count: -1, totalMinutes: 0, names: [] });
+      currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [] });
     }
   }
 
@@ -166,6 +168,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
                           <>
                             <div className="text-subtle mt-0.5">
                               {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
+                              {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
                             </div>
                             <div className="text-dim">{d.names.join(', ')}</div>
                           </>
