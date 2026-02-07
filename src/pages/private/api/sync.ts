@@ -3,6 +3,7 @@ import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
 import { getTidepoolSession } from '@/lib/tidepool/client';
 import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '@/lib/tidepool/sync';
+import { syncStravaHeartRate } from '@/lib/strava/sync';
 
 export const POST: APIRoute = async ({ url }) => {
   try {
@@ -20,12 +21,13 @@ export const POST: APIRoute = async ({ url }) => {
 
     // Normal sync — small default windows, parallel
     if (!fromParam) {
-      const [glucose, insulin, activity] = await Promise.all([
+      const [glucose, insulin, activity, strava] = await Promise.all([
         syncGlucoseReadings(db, cfEnv),
         syncInsulinDoses(db, cfEnv),
         syncActivityData(db, cfEnv),
+        syncStravaHeartRate(db, cfEnv),
       ]);
-      return new Response(JSON.stringify({ glucose, insulin, activity }), {
+      return new Response(JSON.stringify({ glucose, insulin, activity, strava }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -47,8 +49,10 @@ export const POST: APIRoute = async ({ url }) => {
       ? await syncInsulinDoses(db, cfEnv, startMs, endMs, session) : empty;
     const activity = (!typeParam || typeParam === 'activity')
       ? await syncActivityData(db, cfEnv, startMs, endMs, session) : empty;
+    const strava = (!typeParam || typeParam === 'strava')
+      ? await syncStravaHeartRate(db, cfEnv, fromDays) : { matched: 0, unmatched: 0 };
 
-    return new Response(JSON.stringify({ glucose, insulin, activity }), {
+    return new Response(JSON.stringify({ glucose, insulin, activity, strava }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {

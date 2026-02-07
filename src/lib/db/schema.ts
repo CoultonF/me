@@ -61,6 +61,11 @@ export const races = sqliteTable('races', {
   uniqueIndex('races_name_date_idx').on(table.name, table.date),
 ]);
 
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
 export const raceResults = sqliteTable('race_results', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   raceId: integer('race_id').notNull().references(() => races.id),
