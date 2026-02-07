@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import ActivityDashboard from '@/islands/ActivityDashboard';
+---
+
+<SiteLayout title="Activity | Coulton Fraser" activePath="/dashboard/activity">
+  <ActivityDashboard client:load initialRange="7d" />
+</SiteLayout>

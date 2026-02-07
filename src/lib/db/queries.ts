@@ -1,6 +1,6 @@
-import { desc, and, gte, lte, sql, count } from 'drizzle-orm';
+import { desc, and, gte, lte, eq, sql, count } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, runningSessions, activitySummaries } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -95,4 +95,169 @@ export async function getRecentActivity(db: Database, days = 7) {
     .from(activitySummaries)
     .orderBy(desc(activitySummaries.date))
     .limit(days);
+}
+
+// ── Insulin queries ──
+
+export async function getInsulinRange(db: Database, startDate: string, endDate: string) {
+  return db
+    .select({
+      timestamp: insulinDoses.timestamp,
+      units: insulinDoses.units,
+      type: insulinDoses.type,
+      subType: insulinDoses.subType,
+      duration: insulinDoses.duration,
+    })
+    .from(insulinDoses)
+    .where(and(gte(insulinDoses.timestamp, startDate), lte(insulinDoses.timestamp, endDate)))
+    .orderBy(insulinDoses.timestamp);
+}
+
+export async function getInsulinDailyTotals(db: Database, startDate: string, endDate: string) {
+  const range = and(gte(insulinDoses.timestamp, startDate), lte(insulinDoses.timestamp, endDate));
+
+  const rows = await db
+    .select({
+      date: sql<string>`date(${insulinDoses.timestamp})`.as('date'),
+      type: insulinDoses.type,
+      total: sql<number>`sum(case when ${insulinDoses.type} = 'bolus' then ${insulinDoses.units} else ${insulinDoses.units} * ${insulinDoses.duration} / 3600000.0 end)`.as('total'),
+    })
+    .from(insulinDoses)
+    .where(range)
+    .groupBy(sql`date(${insulinDoses.timestamp})`, insulinDoses.type);
+
+  // Pivot into { date, bolusTotal, basalTotal }
+  const byDate = new Map<string, { bolusTotal: number; basalTotal: number }>();
+  for (const row of rows) {
+    const existing = byDate.get(row.date) ?? { bolusTotal: 0, basalTotal: 0 };
+    if (row.type === 'bolus') {
+      existing.bolusTotal = Math.round((row.total ?? 0) * 10) / 10;
+    } else {
+      existing.basalTotal = Math.round((row.total ?? 0) * 10) / 10;
+    }
+    byDate.set(row.date, existing);
+  }
+
+  return Array.from(byDate.entries()).map(([date, totals]) => ({
+    date,
+    ...totals,
+  })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getInsulinStats(db: Database, startDate: string, endDate: string) {
+  const dailyTotals = await getInsulinDailyTotals(db, startDate, endDate);
+
+  if (dailyTotals.length === 0) {
+    return { totalBolus: 0, totalBasal: 0, total: 0, avgDailyTotal: 0, bolusPercent: 0, basalPercent: 0, bolusCount: 0, days: 0 };
+  }
+
+  const totalBolus = dailyTotals.reduce((s, d) => s + d.bolusTotal, 0);
+  const totalBasal = dailyTotals.reduce((s, d) => s + d.basalTotal, 0);
+  const total = totalBolus + totalBasal;
+  const days = dailyTotals.length;
+  const avgDailyTotal = Math.round((total / days) * 10) / 10;
+
+  // Count bolus events
+  const range = and(
+    gte(insulinDoses.timestamp, startDate),
+    lte(insulinDoses.timestamp, endDate),
+    eq(insulinDoses.type, 'bolus'),
+  );
+  const [countRow] = await db.select({ n: count() }).from(insulinDoses).where(range);
+
+  return {
+    totalBolus: Math.round(totalBolus * 10) / 10,
+    totalBasal: Math.round(totalBasal * 10) / 10,
+    total: Math.round(total * 10) / 10,
+    avgDailyTotal,
+    bolusPercent: total > 0 ? Math.round((totalBolus / total) * 100) : 0,
+    basalPercent: total > 0 ? Math.round((totalBasal / total) * 100) : 0,
+    bolusCount: countRow?.n ?? 0,
+    days,
+  };
+}
+
+export async function getLatestInsulin(db: Database) {
+  const rows = await db
+    .select({
+      timestamp: insulinDoses.timestamp,
+      units: insulinDoses.units,
+      type: insulinDoses.type,
+    })
+    .from(insulinDoses)
+    .where(eq(insulinDoses.type, 'bolus'))
+    .orderBy(desc(insulinDoses.timestamp))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// ── Activity queries ──
+
+export async function getWorkouts(db: Database, startDate: string, endDate: string) {
+  return db
+    .select()
+    .from(runningSessions)
+    .where(and(gte(runningSessions.startTime, startDate), lte(runningSessions.startTime, endDate)))
+    .orderBy(desc(runningSessions.startTime));
+}
+
+export async function getActivityRange(db: Database, startDate: string, endDate: string) {
+  return db
+    .select()
+    .from(activitySummaries)
+    .where(and(gte(activitySummaries.date, startDate.slice(0, 10)), lte(activitySummaries.date, endDate.slice(0, 10))))
+    .orderBy(activitySummaries.date);
+}
+
+export async function getActivityStats(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(activitySummaries.date, startDate.slice(0, 10)),
+    lte(activitySummaries.date, endDate.slice(0, 10)),
+  );
+
+  const [agg] = await db
+    .select({
+      totalCalories: sql<number>`coalesce(sum(${activitySummaries.activeCalories}), 0)`,
+      totalExerciseMinutes: sql<number>`coalesce(sum(${activitySummaries.exerciseMinutes}), 0)`,
+      days: count(),
+    })
+    .from(activitySummaries)
+    .where(range);
+
+  const days = agg?.days ?? 0;
+  return {
+    totalCalories: agg?.totalCalories ?? 0,
+    totalExerciseMinutes: agg?.totalExerciseMinutes ?? 0,
+    avgCalories: days > 0 ? Math.round((agg?.totalCalories ?? 0) / days) : 0,
+    avgExerciseMinutes: days > 0 ? Math.round((agg?.totalExerciseMinutes ?? 0) / days) : 0,
+    days,
+  };
+}
+
+export async function getRunningStats(db: Database, startDate: string, endDate: string) {
+  const range = and(
+    gte(runningSessions.startTime, startDate),
+    lte(runningSessions.startTime, endDate),
+  );
+
+  const [agg] = await db
+    .select({
+      totalDistanceKm: sql<number>`coalesce(sum(${runningSessions.distanceKm}), 0)`,
+      totalDurationSeconds: sql<number>`coalesce(sum(${runningSessions.durationSeconds}), 0)`,
+      avgHeartRate: sql<number>`coalesce(avg(${runningSessions.avgHeartRate}), 0)`,
+      workoutCount: count(),
+    })
+    .from(runningSessions)
+    .where(range);
+
+  const totalDist = agg?.totalDistanceKm ?? 0;
+  const totalDur = agg?.totalDurationSeconds ?? 0;
+
+  return {
+    totalDistanceKm: Math.round(totalDist * 100) / 100,
+    totalDurationSeconds: totalDur,
+    avgPaceSecPerKm: totalDist > 0 ? Math.round(totalDur / totalDist) : 0,
+    avgHeartRate: Math.round(agg?.avgHeartRate ?? 0),
+    workoutCount: agg?.workoutCount ?? 0,
+  };
 }

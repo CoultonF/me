@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import InsulinDashboard from '@/islands/InsulinDashboard';
+---
+
+<SiteLayout title="Insulin | Coulton Fraser" activePath="/dashboard/insulin">
+  <InsulinDashboard client:load initialRange="7d" />
+</SiteLayout>

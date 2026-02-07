@@ -33,6 +33,10 @@
   /* ── Chart dot color (flips with theme) ── */
   --color-chart-dot: #1a1a1a;
 
+  /* ── Insulin chart colors ── */
+  --color-insulin-bolus: #6366f1;
+  --color-insulin-basal: #a78bfa;
+
   /* ── Activity ring colors ── */
   --color-activity-move: #fa114f;
   --color-activity-exercise: #92e82a;

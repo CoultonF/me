@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
-import { syncGlucoseReadings } from '@/lib/tidepool/sync';
+import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '@/lib/tidepool/sync';
 
 export const POST: APIRoute = async () => {
   try {
@@ -14,9 +14,14 @@ export const POST: APIRoute = async () => {
     }
 
     const db = createDb(cfEnv.DB);
-    const result = await syncGlucoseReadings(db, cfEnv);
 
-    return new Response(JSON.stringify(result), {
+    const [glucose, insulin, activity] = await Promise.all([
+      syncGlucoseReadings(db, cfEnv),
+      syncInsulinDoses(db, cfEnv),
+      syncActivityData(db, cfEnv),
+    ]);
+
+    return new Response(JSON.stringify({ glucose, insulin, activity }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {

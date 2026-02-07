@@ -4,12 +4,12 @@ const currentPath = Astro.url.pathname;
 const tabs = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/dashboard/glucose', label: 'Glucose' },
+  { href: '/dashboard/insulin', label: 'Insulin' },
   { href: '/dashboard/activity', label: 'Activity' },
-  { href: '/dashboard/running', label: 'Running' },
 ];
 ---
 
-<nav class="border-b border-surface-overlay">
+<nav class="border-b border-stroke">
   <div class="mx-auto flex max-w-5xl gap-0 px-6">
     {
       tabs.map(tab => (
@@ -18,8 +18,8 @@ const tabs = [
           class:list={[
             'border-b-2 px-4 py-3 text-sm font-medium transition-colors',
             currentPath === tab.href
-              ? 'border-brand-light text-brand-light'
-              : 'border-transparent text-text-muted hover:border-surface-overlay hover:text-text-secondary',
+              ? 'border-accent text-accent'
+              : 'border-transparent text-dim hover:border-stroke hover:text-subtle',
           ]}
         >
           {tab.label}

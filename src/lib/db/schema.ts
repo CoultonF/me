@@ -15,8 +15,12 @@ export const insulinDoses = sqliteTable('insulin_doses', {
   timestamp: text('timestamp').notNull(), // ISO 8601
   units: real('units').notNull(),
   type: text('type', { enum: ['bolus', 'basal'] }).notNull(),
+  subType: text('sub_type'), // bolus: normal/extended/dual; basal: scheduled/temp/suspend
+  duration: integer('duration'), // basal segment duration in ms
   source: text('source').default('loop'),
-});
+}, (table) => [
+  uniqueIndex('insulin_doses_ts_type_idx').on(table.timestamp, table.type),
+]);
 
 export const activitySummaries = sqliteTable('activity_summaries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -38,4 +42,9 @@ export const runningSessions = sqliteTable('running_sessions', {
   avgHeartRate: integer('avg_heart_rate'),
   maxHeartRate: integer('max_heart_rate'),
   elevationGainM: real('elevation_gain_m'),
-});
+  activityName: text('activity_name'), // "Running", "Cycling", etc.
+  activeCalories: integer('active_calories'), // kcal from Tidepool energy
+  source: text('source').default('tidepool'),
+}, (table) => [
+  uniqueIndex('running_sessions_start_time_idx').on(table.startTime),
+]);
