@@ -11,6 +11,7 @@ import RunningSummaryCards from './running/RunningSummaryCards';
 import PaceProgression from './running/PaceProgression';
 import DistanceVolume from './running/DistanceVolume';
 import HRAnalysis from './running/HRAnalysis';
+import TargetRaceCountdown from './races/TargetRaceCountdown';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
@@ -159,6 +160,11 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
 
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
             <ActivitySummaryCards activityStats={activityStats} />
+          </ErrorBoundary>
+
+          {/* ── Target race countdown ── */}
+          <ErrorBoundary fallbackTitle="Target race countdown failed to load">
+            <TargetRaceCountdown />
           </ErrorBoundary>
 
           {/* ── Running analytics ── */}

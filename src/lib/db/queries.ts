@@ -1,6 +1,6 @@
-import { desc, and, gte, lte, eq, sql, count } from 'drizzle-orm';
+import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -417,4 +417,232 @@ export async function getPaceHRCorrelation(db: Database, startDate: string, endD
       ),
     )
     .orderBy(runningSessions.startTime);
+}
+
+// ── Race queries ──
+
+export async function getRacesWithResults(db: Database) {
+  const rows = await db
+    .select({
+      id: races.id,
+      name: races.name,
+      date: races.date,
+      location: races.location,
+      distance: races.distance,
+      status: races.status,
+      resultsUrl: races.resultsUrl,
+      resultId: raceResults.id,
+      raceId: raceResults.raceId,
+      bibNumber: raceResults.bibNumber,
+      chipTime: raceResults.chipTime,
+      gunTime: raceResults.gunTime,
+      pacePerKm: raceResults.pacePerKm,
+      city: raceResults.city,
+      division: raceResults.division,
+      overallPlace: raceResults.overallPlace,
+      overallTotal: raceResults.overallTotal,
+      genderPlace: raceResults.genderPlace,
+      genderTotal: raceResults.genderTotal,
+      divisionPlace: raceResults.divisionPlace,
+      divisionTotal: raceResults.divisionTotal,
+      resultResultsUrl: raceResults.resultsUrl,
+    })
+    .from(races)
+    .leftJoin(raceResults, eq(races.id, raceResults.raceId))
+    .orderBy(desc(races.date));
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    date: r.date,
+    location: r.location,
+    distance: r.distance,
+    status: r.status as 'completed' | 'upcoming' | 'target',
+    resultsUrl: r.resultsUrl,
+    result: r.resultId
+      ? {
+          id: r.resultId,
+          raceId: r.raceId!,
+          bibNumber: r.bibNumber,
+          chipTime: r.chipTime,
+          gunTime: r.gunTime,
+          pacePerKm: r.pacePerKm,
+          city: r.city,
+          division: r.division,
+          overallPlace: r.overallPlace,
+          overallTotal: r.overallTotal,
+          genderPlace: r.genderPlace,
+          genderTotal: r.genderTotal,
+          divisionPlace: r.divisionPlace,
+          divisionTotal: r.divisionTotal,
+          resultsUrl: r.resultResultsUrl,
+        }
+      : null,
+  }));
+}
+
+export async function getTargetRace(db: Database) {
+  const rows = await db
+    .select({
+      id: races.id,
+      name: races.name,
+      date: races.date,
+      location: races.location,
+      distance: races.distance,
+      status: races.status,
+      resultsUrl: races.resultsUrl,
+    })
+    .from(races)
+    .where(eq(races.status, 'target'))
+    .orderBy(asc(races.date))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function getRacesByStatus(db: Database, status: 'completed' | 'upcoming' | 'target') {
+  return db
+    .select()
+    .from(races)
+    .where(eq(races.status, status))
+    .orderBy(desc(races.date));
+}
+
+export async function getRaceStats(db: Database) {
+  // Total completed races
+  const [countRow] = await db
+    .select({ n: count() })
+    .from(races)
+    .where(eq(races.status, 'completed'));
+
+  const totalRaces = countRow?.n ?? 0;
+
+  // PBs per distance: find the fastest chip time per distance
+  // Using min on chip time string works because "0:47:41" < "0:52:00" lexicographically
+  // for same-length time strings (H:MM:SS format)
+  const pbRows = await db
+    .select({
+      distance: races.distance,
+      chipTime: min(raceResults.chipTime).as('best_chip_time'),
+    })
+    .from(races)
+    .innerJoin(raceResults, eq(races.id, raceResults.raceId))
+    .where(eq(races.status, 'completed'))
+    .groupBy(races.distance);
+
+  // For each PB, get the race name and date
+  const personalBests = [];
+  for (const pb of pbRows) {
+    if (!pb.chipTime) continue;
+    const [raceRow] = await db
+      .select({ name: races.name, date: races.date })
+      .from(races)
+      .innerJoin(raceResults, eq(races.id, raceResults.raceId))
+      .where(
+        and(
+          eq(races.distance, pb.distance),
+          eq(raceResults.chipTime, pb.chipTime),
+          eq(races.status, 'completed'),
+        ),
+      )
+      .limit(1);
+
+    if (raceRow) {
+      personalBests.push({
+        distance: pb.distance,
+        chipTime: pb.chipTime,
+        raceName: raceRow.name,
+        date: raceRow.date,
+      });
+    }
+  }
+
+  return { totalRaces, personalBests };
+}
+
+export async function insertRace(
+  db: Database,
+  data: { name: string; date: string; location?: string | null; distance: string; status: 'completed' | 'upcoming' | 'target'; resultsUrl?: string | null },
+) {
+  const rows = await db.insert(races).values({
+    name: data.name,
+    date: data.date,
+    location: data.location ?? null,
+    distance: data.distance,
+    status: data.status,
+    resultsUrl: data.resultsUrl ?? null,
+  }).returning({ id: races.id });
+  return rows[0]!.id;
+}
+
+export async function insertRaceResult(
+  db: Database,
+  data: {
+    raceId: number;
+    bibNumber?: string | null;
+    chipTime?: string | null;
+    gunTime?: string | null;
+    pacePerKm?: string | null;
+    city?: string | null;
+    division?: string | null;
+    overallPlace?: number | null;
+    overallTotal?: number | null;
+    genderPlace?: number | null;
+    genderTotal?: number | null;
+    divisionPlace?: number | null;
+    divisionTotal?: number | null;
+    resultsUrl?: string | null;
+  },
+) {
+  await db.insert(raceResults).values({
+    raceId: data.raceId,
+    bibNumber: data.bibNumber ?? null,
+    chipTime: data.chipTime ?? null,
+    gunTime: data.gunTime ?? null,
+    pacePerKm: data.pacePerKm ?? null,
+    city: data.city ?? null,
+    division: data.division ?? null,
+    overallPlace: data.overallPlace ?? null,
+    overallTotal: data.overallTotal ?? null,
+    genderPlace: data.genderPlace ?? null,
+    genderTotal: data.genderTotal ?? null,
+    divisionPlace: data.divisionPlace ?? null,
+    divisionTotal: data.divisionTotal ?? null,
+    resultsUrl: data.resultsUrl ?? null,
+  });
+}
+
+export async function updateRace(
+  db: Database,
+  id: number,
+  updates: Partial<{ name: string; date: string; location: string | null; distance: string; status: 'completed' | 'upcoming' | 'target'; resultsUrl: string | null }>,
+) {
+  await db.update(races).set(updates).where(eq(races.id, id));
+}
+
+export async function updateRaceResult(
+  db: Database,
+  raceId: number,
+  updates: Partial<{
+    bibNumber: string | null;
+    chipTime: string | null;
+    gunTime: string | null;
+    pacePerKm: string | null;
+    city: string | null;
+    division: string | null;
+    overallPlace: number | null;
+    overallTotal: number | null;
+    genderPlace: number | null;
+    genderTotal: number | null;
+    divisionPlace: number | null;
+    divisionTotal: number | null;
+    resultsUrl: string | null;
+  }>,
+) {
+  await db.update(raceResults).set(updates).where(eq(raceResults.raceId, raceId));
+}
+
+export async function deleteRace(db: Database, id: number) {
+  await db.delete(raceResults).where(eq(raceResults.raceId, id));
+  await db.delete(races).where(eq(races.id, id));
 }

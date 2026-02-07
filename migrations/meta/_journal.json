@@ -15,6 +15,13 @@
       "when": 1770423868086,
       "tag": "0001_fair_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770451369914,
+      "tag": "0002_flowery_madripoor",
+      "breakpoints": true
     }
   ]
 }

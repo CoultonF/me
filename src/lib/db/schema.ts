@@ -48,3 +48,35 @@ export const runningSessions = sqliteTable('running_sessions', {
 }, (table) => [
   uniqueIndex('running_sessions_start_time_idx').on(table.startTime),
 ]);
+
+export const races = sqliteTable('races', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  date: text('date').notNull(),                  // YYYY-MM-DD
+  location: text('location'),                    // "Calgary, AB"
+  distance: text('distance').notNull(),          // "10K", "Half Marathon", "Marathon"
+  status: text('status', { enum: ['completed', 'upcoming', 'target'] }).notNull(),
+  resultsUrl: text('results_url'),
+}, (table) => [
+  uniqueIndex('races_name_date_idx').on(table.name, table.date),
+]);
+
+export const raceResults = sqliteTable('race_results', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  raceId: integer('race_id').notNull().references(() => races.id),
+  bibNumber: text('bib_number'),
+  chipTime: text('chip_time'),                   // "0:47:41"
+  gunTime: text('gun_time'),                     // "0:47:46"
+  pacePerKm: text('pace_per_km'),                // "04:46"
+  city: text('city'),                            // "Calgary, AB"
+  division: text('division'),                    // "M3034"
+  overallPlace: integer('overall_place'),
+  overallTotal: integer('overall_total'),
+  genderPlace: integer('gender_place'),
+  genderTotal: integer('gender_total'),
+  divisionPlace: integer('division_place'),
+  divisionTotal: integer('division_total'),
+  resultsUrl: text('results_url'),
+}, (table) => [
+  uniqueIndex('race_results_race_id_idx').on(table.raceId),
+]);

@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import RacesDashboard from '@/islands/RacesDashboard';
+---
+
+<SiteLayout title="Races | Coulton Fraser" activePath="/dashboard/races">
+  <RacesDashboard client:load />
+</SiteLayout>
