@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { glucoseReadings, insulinDoses, runningSessions, activitySummaries } from '../db/schema';
 import { getTidepoolSession, fetchCGMData, fetchInsulinData, fetchActivityData } from './client';
 import type { TidepoolPhysicalActivity } from './client';
@@ -221,28 +222,37 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
   }
 
   // Aggregate into activitySummaries by date
-  const byDate = new Map<string, { calories: number; minutes: number }>();
-  for (const w of workoutRows) {
-    const date = w.startTime.slice(0, 10); // YYYY-MM-DD
-    const existing = byDate.get(date) ?? { calories: 0, minutes: 0 };
-    existing.calories += w.activeCalories ?? 0;
-    existing.minutes += w.durationSeconds ? w.durationSeconds / 60 : 0;
-    byDate.set(date, existing);
-  }
+  // Query ALL workouts from DB for affected dates so re-syncs produce correct totals
+  const affectedDates = [...new Set(workoutRows.map((w) => w.startTime.slice(0, 10)))];
 
-  for (const [date, agg] of Array.from(byDate.entries())) {
+  for (const date of affectedDates) {
+    const dbWorkouts = await db
+      .select({
+        calories: runningSessions.activeCalories,
+        duration: runningSessions.durationSeconds,
+      })
+      .from(runningSessions)
+      .where(sql`substr(${runningSessions.startTime}, 1, 10) = ${date}`);
+
+    let totalCalories = 0;
+    let totalMinutes = 0;
+    for (const w of dbWorkouts) {
+      totalCalories += w.calories ?? 0;
+      totalMinutes += w.duration ? w.duration / 60 : 0;
+    }
+
     await db
       .insert(activitySummaries)
       .values({
         date,
-        activeCalories: Math.round(agg.calories),
-        exerciseMinutes: Math.round(agg.minutes),
+        activeCalories: Math.round(totalCalories),
+        exerciseMinutes: Math.round(totalMinutes),
       })
       .onConflictDoUpdate({
         target: activitySummaries.date,
         set: {
-          activeCalories: Math.round(agg.calories),
-          exerciseMinutes: Math.round(agg.minutes),
+          activeCalories: Math.round(totalCalories),
+          exerciseMinutes: Math.round(totalMinutes),
         },
       });
   }
