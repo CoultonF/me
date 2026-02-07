@@ -95,6 +95,7 @@
 /* ── Sidebar: transform states (can't be pure utilities due to JS toggle) ── */
 .sidebar {
   transform: translateX(-100%);
+  overscroll-behavior: contain;
 }
 @media (min-width: 768px) {
   .sidebar {

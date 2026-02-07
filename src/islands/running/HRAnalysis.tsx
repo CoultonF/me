@@ -8,8 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import type { HRZoneDistribution, PaceHRPoint } from '../../lib/types/running';
-import type { Workout } from '../../lib/types/activity';
+import type { HRZoneDistribution, PaceHRPoint, Workout } from '../../lib/types/activity';
 
 interface Props {
   hrZones: HRZoneDistribution;

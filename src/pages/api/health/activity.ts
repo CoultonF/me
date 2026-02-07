@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
-import { getWorkouts, getActivityRange, getActivityStats, getRunningStats } from '@/lib/db/queries';
-import type { ActivityAPIResponse } from '@/lib/types/activity';
+import { getWorkouts, getActivityRange, getActivityStats, getRunningExtendedStats, getWeeklyDistances, getPaceHistory, getPaceHRCorrelation } from '@/lib/db/queries';
+import type { ActivityAPIResponse, HRZoneDistribution } from '@/lib/types/activity';
 
 const RANGE_MS: Record<string, number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
@@ -11,11 +11,43 @@ const RANGE_MS: Record<string, number> = {
   '365d': 365 * 24 * 60 * 60 * 1000,
 };
 
+const MAX_HR = 190;
+
+function computeHRZones(workouts: { avgHeartRate: number | null }[]): HRZoneDistribution {
+  const counts = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
+  let total = 0;
+
+  for (const w of workouts) {
+    if (!w.avgHeartRate || w.avgHeartRate <= 0) continue;
+    total++;
+    const pct = w.avgHeartRate / MAX_HR;
+    if (pct < 0.6) counts.zone1++;
+    else if (pct < 0.7) counts.zone2++;
+    else if (pct < 0.8) counts.zone3++;
+    else if (pct < 0.9) counts.zone4++;
+    else counts.zone5++;
+  }
+
+  if (total === 0) return { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
+
+  return {
+    zone1: Math.round((counts.zone1 / total) * 100),
+    zone2: Math.round((counts.zone2 / total) * 100),
+    zone3: Math.round((counts.zone3 / total) * 100),
+    zone4: Math.round((counts.zone4 / total) * 100),
+    zone5: Math.round((counts.zone5 / total) * 100),
+  };
+}
+
 const emptyResponse: ActivityAPIResponse = {
   workouts: [],
   dailySummaries: [],
   activityStats: { totalCalories: 0, totalExerciseMinutes: 0, avgCalories: 0, avgExerciseMinutes: 0, days: 0 },
-  runningStats: { totalDistanceKm: 0, totalDurationSeconds: 0, avgPaceSecPerKm: 0, avgHeartRate: 0, workoutCount: 0 },
+  runningStats: { totalDistanceKm: 0, totalDurationSeconds: 0, avgPaceSecPerKm: 0, avgHeartRate: 0, workoutCount: 0, longestRunKm: 0, fastestPaceSecPerKm: 0, totalElevationGainM: 0, totalActiveCalories: 0 },
+  weeklyDistances: [],
+  paceHistory: [],
+  hrZones: { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 },
+  paceHRCorrelation: [],
 };
 
 export const GET: APIRoute = async ({ url }) => {
@@ -36,14 +68,35 @@ export const GET: APIRoute = async ({ url }) => {
     const startDate = new Date(now.getTime() - ms).toISOString();
     const endDate = now.toISOString();
 
-    const [workouts, dailySummaries, activityStats, runningStats] = await Promise.all([
+    const [workouts, dailySummaries, activityStats, runningStats, weeklyDistances, paceHistoryRaw, paceHRCorrelationRaw] = await Promise.all([
       getWorkouts(db, startDate, endDate),
       getActivityRange(db, startDate, endDate),
       getActivityStats(db, startDate, endDate),
-      getRunningStats(db, startDate, endDate),
+      getRunningExtendedStats(db, startDate, endDate),
+      getWeeklyDistances(db, startDate, endDate),
+      getPaceHistory(db, startDate, endDate),
+      getPaceHRCorrelation(db, startDate, endDate),
     ]);
 
-    const body: ActivityAPIResponse = { workouts, dailySummaries, activityStats, runningStats };
+    const hrZones = computeHRZones(workouts);
+
+    const paceHistory = paceHistoryRaw
+      .filter((p) => p.avgPaceSecPerKm && p.avgPaceSecPerKm > 0)
+      .map((p) => ({
+        startTime: p.startTime,
+        avgPaceSecPerKm: p.avgPaceSecPerKm!,
+        distanceKm: p.distanceKm ?? 0,
+        activityName: p.activityName ?? 'Workout',
+      }));
+
+    const paceHRCorrelation = paceHRCorrelationRaw.map((p) => ({
+      avgPaceSecPerKm: p.avgPaceSecPerKm!,
+      avgHeartRate: p.avgHeartRate!,
+      distanceKm: p.distanceKm ?? 0,
+      startTime: p.startTime,
+    }));
+
+    const body: ActivityAPIResponse = { workouts, dailySummaries, activityStats, runningStats, weeklyDistances, paceHistory, hrZones, paceHRCorrelation };
 
     return new Response(JSON.stringify(body), {
       headers: { 'Content-Type': 'application/json' },

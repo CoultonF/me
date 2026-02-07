@@ -7,6 +7,11 @@ import WorkoutList from './activity/WorkoutList';
 import ActivitySummaryCards from './activity/ActivitySummaryCards';
 import ActivityCalendar from './activity/ActivityCalendar';
 import DateRangePicker from './activity/DateRangePicker';
+import RunningSummaryCards from './running/RunningSummaryCards';
+import PaceProgression from './running/PaceProgression';
+import DistanceVolume from './running/DistanceVolume';
+import TrainingCalendar from './running/TrainingCalendar';
+import HRAnalysis from './running/HRAnalysis';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
@@ -30,7 +35,13 @@ const EMPTY_RUNNING_STATS = {
   avgPaceSecPerKm: 0,
   avgHeartRate: 0,
   workoutCount: 0,
+  longestRunKm: 0,
+  fastestPaceSecPerKm: 0,
+  totalElevationGainM: 0,
+  totalActiveCalories: 0,
 };
+
+const EMPTY_HR_ZONES = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
 
 export default function ActivityDashboard({ initialRange = '7d' }: Props) {
   const [range, setRange] = useState<Range>(initialRange);
@@ -124,7 +135,9 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
           </div>
           <ChartSkeleton height={120} />
           <ChartSkeleton />
-          <CardsSkeleton count={4} />
+          <CardsSkeleton count={6} columns={3} />
+          <ChartSkeleton />
+          <ChartSkeleton height={280} />
         </div>
       ) : (
         <>
@@ -145,12 +158,37 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
             <ActivityTrends dailySummaries={data?.dailySummaries ?? []} />
           </ErrorBoundary>
 
-          <ErrorBoundary fallbackTitle="Workout list failed to load">
-            <WorkoutList workouts={data?.workouts ?? []} />
-          </ErrorBoundary>
-
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
             <ActivitySummaryCards activityStats={activityStats} runningStats={runningStats} />
+          </ErrorBoundary>
+
+          {/* ── Running analytics ── */}
+          <ErrorBoundary fallbackTitle="Running summary failed to load">
+            <RunningSummaryCards stats={runningStats} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Pace chart failed to load">
+            <PaceProgression paceHistory={data?.paceHistory ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Distance chart failed to load">
+            <DistanceVolume weeklyDistances={data?.weeklyDistances ?? []} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Training calendar failed to load">
+            <TrainingCalendar />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="HR analysis failed to load">
+            <HRAnalysis
+              hrZones={data?.hrZones ?? EMPTY_HR_ZONES}
+              paceHRCorrelation={data?.paceHRCorrelation ?? []}
+              workouts={data?.workouts ?? []}
+            />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Workout list failed to load">
+            <WorkoutList workouts={data?.workouts ?? []} />
           </ErrorBoundary>
         </>
       )}

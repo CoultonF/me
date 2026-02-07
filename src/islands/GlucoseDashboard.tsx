@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import type { GlucoseAPIResponse } from '../lib/types/glucose';
 import CurrentReading from './glucose/CurrentReading';
 import GlucoseTimeSeries from './glucose/GlucoseTimeSeries';
-import GlucoseOverlay24h from './glucose/GlucoseOverlay24h';
 import TimeInRangeDonut from './glucose/TimeInRangeDonut';
 import SummaryCards from './glucose/SummaryCards';
 import DateRangePicker from './glucose/DateRangePicker';
@@ -127,12 +126,6 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
           <ErrorBoundary fallbackTitle="Glucose chart failed to load">
             <GlucoseTimeSeries readings={data?.readings ?? []} range={range} />
           </ErrorBoundary>
-
-          {range === '24h' && (
-            <ErrorBoundary fallbackTitle="Glucose overlay failed to load">
-              <GlucoseOverlay24h readings={data?.readings ?? []} />
-            </ErrorBoundary>
-          )}
 
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
             <SummaryCards stats={stats} />

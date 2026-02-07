@@ -1,4 +1,4 @@
-import type { RunningExtendedStats } from '../../lib/types/running';
+import type { RunningExtendedStats } from '../../lib/types/activity';
 
 interface Props {
   stats: RunningExtendedStats;

@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import type { PaceDataPoint } from '../../lib/types/running';
+import type { PaceDataPoint } from '../../lib/types/activity';
 
 interface Props {
   paceHistory: PaceDataPoint[];
@@ -55,8 +55,15 @@ function PaceTooltip({ active, payload }: { active?: boolean; payload?: PaceTool
   );
 }
 
+// Realistic pace bounds: 4:00/km (240s) to 7:00/km (420s)
+const PACE_MIN = 240;
+const PACE_MAX = 420;
+
 export default function PaceProgression({ paceHistory }: Props) {
-  if (paceHistory.length === 0) {
+  // Filter to realistic paces only
+  const filtered = paceHistory.filter((p) => p.avgPaceSecPerKm >= PACE_MIN && p.avgPaceSecPerKm <= PACE_MAX);
+
+  if (filtered.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">No pace data available</div>
@@ -64,7 +71,7 @@ export default function PaceProgression({ paceHistory }: Props) {
     );
   }
 
-  const data = paceHistory.map((p) => ({
+  const data = filtered.map((p) => ({
     ...p,
     ts: new Date(p.startTime).getTime(),
     isRunning: p.activityName === 'Running',
@@ -73,9 +80,8 @@ export default function PaceProgression({ paceHistory }: Props) {
   const trend = movingAverage(data, Math.min(5, data.length));
   const merged = data.map((d, i) => ({ ...d, trendPace: trend[i]?.trendPace }));
 
-  const paces = data.map((d) => d.avgPaceSecPerKm);
-  const yMin = Math.floor(Math.min(...paces) / 60) * 60 - 30;
-  const yMax = Math.ceil(Math.max(...paces) / 60) * 60 + 30;
+  const yMin = PACE_MIN;
+  const yMax = PACE_MAX;
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Workout } from '../../lib/types/activity';
-import type { RunningAPIResponse } from '../../lib/types/running';
+import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 
 const DAYS = 365;
 
@@ -57,8 +56,8 @@ export default function TrainingCalendar() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/api/health/running?range=365d')
-      .then((r) => r.json() as Promise<RunningAPIResponse>)
+    fetch('/api/health/activity?range=365d')
+      .then((r) => r.json() as Promise<ActivityAPIResponse>)
       .then((d) => { setWorkouts(d.workouts); setLoaded(true); })
       .catch(() => setLoaded(true));
   }, []);

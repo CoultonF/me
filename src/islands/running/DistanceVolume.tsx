@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import type { WeeklyDistance } from '../../lib/types/running';
+import type { WeeklyDistance } from '../../lib/types/activity';
 
 interface Props {
   weeklyDistances: WeeklyDistance[];
