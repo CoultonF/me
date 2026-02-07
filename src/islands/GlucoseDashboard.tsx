@@ -6,7 +6,7 @@ import TimeInRangeDonut from './glucose/TimeInRangeDonut';
 import SummaryCards from './glucose/SummaryCards';
 import DateRangePicker from './glucose/DateRangePicker';
 
-type Range = '24h' | '7d' | '30d';
+type Range = '24h' | '7d' | '30d' | '90d';
 
 interface Props {
   initialRange?: Range;
@@ -114,7 +114,7 @@ export default function GlucoseDashboard({ initialRange = '24h' }: Props) {
             </div>
           </div>
 
-          <GlucoseTimeSeries readings={data?.readings ?? []} />
+          <GlucoseTimeSeries readings={data?.readings ?? []} range={range} />
           <SummaryCards stats={stats} />
         </>
       )}

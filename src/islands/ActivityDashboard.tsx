@@ -5,6 +5,7 @@ import WeeklyActivityChart from './activity/WeeklyActivityChart';
 import ActivityTrends from './activity/ActivityTrends';
 import WorkoutList from './activity/WorkoutList';
 import ActivitySummaryCards from './activity/ActivitySummaryCards';
+import ActivityCalendar from './activity/ActivityCalendar';
 import DateRangePicker from './activity/DateRangePicker';
 
 type Range = '7d' | '30d' | '90d';
@@ -125,6 +126,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
               <WeeklyActivityChart dailySummaries={data?.dailySummaries ?? []} />
             </div>
           </div>
+          <ActivityCalendar />
           <ActivityTrends dailySummaries={data?.dailySummaries ?? []} />
           <WorkoutList workouts={data?.workouts ?? []} />
           <ActivitySummaryCards activityStats={activityStats} runningStats={runningStats} />
