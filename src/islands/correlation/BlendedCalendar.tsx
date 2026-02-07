@@ -214,7 +214,7 @@ export default function BlendedCalendar({ days }: Props) {
                         />
                       )}
                       {!d.isEmpty && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+                        <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none ${di <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
                           <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
                             <div className="font-medium text-body">
                               {formatDateLabel(d.date)}
