@@ -1,0 +1,21 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+
+const pages = [
+  { href: '/private/races', label: 'Races', description: 'Add, edit, and delete races and results' },
+];
+---
+
+<SiteLayout title="Admin | Coulton Fraser" activePath="/private">
+  <div class="space-y-6">
+    <h2 class="text-lg font-semibold text-heading">Admin</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {pages.map((page) => (
+        <a href={page.href} class="bg-tile border border-stroke rounded-lg p-4 hover:border-accent transition-colors no-underline hover:no-underline">
+          <div class="text-sm font-semibold text-heading">{page.label}</div>
+          <div class="text-xs text-dim mt-1">{page.description}</div>
+        </a>
+      ))}
+    </div>
+  </div>
+</SiteLayout>
