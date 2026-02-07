@@ -36,13 +36,14 @@ function formatDistance(km: number): string {
 
 export default function CalendarDayCell({ day, cellWidth }: Props) {
   const isCondensed = cellWidth < 100;
-  const sparklineWidth = cellWidth - 8; // 4px padding each side
+  const sparklineWidth = cellWidth - 8;
   const sparklineHeight = isCondensed ? 28 : 36;
+  const minH = isCondensed ? 'min-h-[60px]' : 'min-h-[80px]';
 
   // Ghost state for future dates
   if (day.isFuture) {
     return (
-      <div className={`rounded-md border border-stroke/30 p-1 min-h-[40px] overflow-hidden min-w-0 ${!day.isCurrentMonth ? 'opacity-30' : ''}`}>
+      <div className={`rounded-md border border-stroke/30 p-1 ${minH} overflow-hidden min-w-0 ${!day.isCurrentMonth ? 'opacity-30' : ''}`}>
         <span className="text-[11px] text-dim">{day.dayOfMonth}</span>
       </div>
     );
@@ -51,7 +52,7 @@ export default function CalendarDayCell({ day, cellWidth }: Props) {
   // Non-current-month padding days
   if (!day.isCurrentMonth) {
     return (
-      <div className="rounded-md border border-stroke/20 p-1 min-h-[40px] overflow-hidden min-w-0 opacity-30">
+      <div className={`rounded-md border border-stroke/20 p-1 ${minH} overflow-hidden min-w-0 opacity-30`}>
         <span className="text-[11px] text-dim">{day.dayOfMonth}</span>
       </div>
     );
@@ -65,7 +66,7 @@ export default function CalendarDayCell({ day, cellWidth }: Props) {
   // Condensed layout for narrow cells
   if (isCondensed) {
     return (
-      <div className="rounded-md border border-stroke bg-tile p-1 min-h-[40px] overflow-hidden min-w-0 flex flex-col gap-0.5">
+      <div className={`rounded-md border border-stroke bg-tile p-1 ${minH} overflow-hidden min-w-0 flex flex-col gap-0.5`}>
         <span className="text-[11px] font-medium text-heading leading-none">
           {day.dayOfMonth}
         </span>
@@ -91,7 +92,7 @@ export default function CalendarDayCell({ day, cellWidth }: Props) {
 
   // Full layout
   return (
-    <div className="rounded-md border border-stroke bg-tile p-1.5 min-h-[80px] overflow-hidden min-w-0 flex flex-col gap-0.5">
+    <div className={`rounded-md border border-stroke bg-tile p-1.5 ${minH} overflow-hidden min-w-0 flex flex-col gap-0.5`}>
       {/* Header: day number + TIR badge */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-medium text-heading leading-none">

@@ -35,15 +35,12 @@ export default function BgSparkline({ readings, width, height }: Props) {
     return height - ((clamped - Y_MIN) / (Y_MAX - Y_MIN)) * height;
   };
 
-  const points: Point[] = readings.map((r) => {
-    const d = new Date(r.timestamp);
-    const minuteOfDay = d.getHours() * 60 + d.getMinutes();
-    return {
-      x: (minuteOfDay / 1440) * width,
-      y: yScale(r.value),
-      value: r.value,
-    };
-  });
+  const last = readings.length - 1;
+  const points: Point[] = readings.map((r, i) => ({
+    x: last > 0 ? (i / last) * width : width / 2,
+    y: yScale(r.value),
+    value: r.value,
+  }));
 
   // Build colored line segments
   const segments: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
