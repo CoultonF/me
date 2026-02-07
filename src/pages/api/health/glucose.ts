@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getCloudflareEnv } from '@/lib/env';
 import { createDb } from '@/lib/db/client';
-import { getLatestGlucose, getGlucoseRange, getGlucoseStats } from '@/lib/db/queries';
+import { getLatestGlucose, getGlucoseRange, getGlucoseRangeDownsampled, getGlucoseStats } from '@/lib/db/queries';
 import type { GlucoseAPIResponse } from '@/lib/types/glucose';
 
 const RANGE_MS: Record<string, number> = {
@@ -35,9 +35,14 @@ export const GET: APIRoute = async ({ url }) => {
     const startDate = new Date(now.getTime() - ms).toISOString();
     const endDate = now.toISOString();
 
+    const sampleEvery: Record<string, number> = { '24h': 1, '7d': 4, '30d': 17, '90d': 52 };
+    const n = sampleEvery[range] ?? 1;
+
     const [latest, readings, stats] = await Promise.all([
       getLatestGlucose(db),
-      getGlucoseRange(db, startDate, endDate),
+      n > 1
+        ? getGlucoseRangeDownsampled(db, startDate, endDate, n)
+        : getGlucoseRange(db, startDate, endDate),
       getGlucoseStats(db, startDate, endDate),
     ]);
 

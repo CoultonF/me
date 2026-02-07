@@ -24,7 +24,7 @@ export interface InsulinStats {
 }
 
 export interface InsulinAPIResponse {
-  doses: InsulinDose[];
+  doses?: InsulinDose[];
   dailyTotals: InsulinDailyTotal[];
   stats: InsulinStats;
 }

@@ -72,6 +72,24 @@ export async function getGlucoseStats(db: Database, startDate: string, endDate: 
   };
 }
 
+export async function getGlucoseRangeDownsampled(db: Database, startDate: string, endDate: string, sampleEvery: number) {
+  return db
+    .select({
+      timestamp: glucoseReadings.timestamp,
+      value: glucoseReadings.value,
+      trend: glucoseReadings.trend,
+    })
+    .from(glucoseReadings)
+    .where(
+      and(
+        gte(glucoseReadings.timestamp, startDate),
+        lte(glucoseReadings.timestamp, endDate),
+        sql`rowid % ${sampleEvery} = 0`,
+      ),
+    )
+    .orderBy(glucoseReadings.timestamp);
+}
+
 export async function getGlucoseReadings(db: Database, limit = 288) {
   return db
     .select()
@@ -144,8 +162,13 @@ export async function getInsulinDailyTotals(db: Database, startDate: string, end
   })).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function getInsulinStats(db: Database, startDate: string, endDate: string) {
-  const dailyTotals = await getInsulinDailyTotals(db, startDate, endDate);
+export async function getInsulinStats(
+  db: Database,
+  startDate: string,
+  endDate: string,
+  precomputedDailyTotals?: Awaited<ReturnType<typeof getInsulinDailyTotals>>,
+) {
+  const dailyTotals = precomputedDailyTotals ?? await getInsulinDailyTotals(db, startDate, endDate);
 
   if (dailyTotals.length === 0) {
     return { totalBolus: 0, totalBasal: 0, total: 0, avgDailyTotal: 0, bolusPercent: 0, basalPercent: 0, bolusCount: 0, days: 0 };
@@ -195,7 +218,15 @@ export async function getLatestInsulin(db: Database) {
 
 export async function getWorkouts(db: Database, startDate: string, endDate: string) {
   return db
-    .select()
+    .select({
+      startTime: runningSessions.startTime,
+      distanceKm: runningSessions.distanceKm,
+      durationSeconds: runningSessions.durationSeconds,
+      avgPaceSecPerKm: runningSessions.avgPaceSecPerKm,
+      avgHeartRate: runningSessions.avgHeartRate,
+      activityName: runningSessions.activityName,
+      activeCalories: runningSessions.activeCalories,
+    })
     .from(runningSessions)
     .where(and(gte(runningSessions.startTime, startDate), lte(runningSessions.startTime, endDate)))
     .orderBy(desc(runningSessions.startTime));

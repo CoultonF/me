@@ -12,7 +12,6 @@ const RANGE_MS: Record<string, number> = {
 };
 
 const emptyResponse: InsulinAPIResponse = {
-  doses: [],
   dailyTotals: [],
   stats: { totalBolus: 0, totalBasal: 0, total: 0, avgDailyTotal: 0, bolusPercent: 0, basalPercent: 0, bolusCount: 0, days: 0 },
 };
@@ -35,13 +34,15 @@ export const GET: APIRoute = async ({ url }) => {
     const startDate = new Date(now.getTime() - ms).toISOString();
     const endDate = now.toISOString();
 
-    const [doses, dailyTotals, stats] = await Promise.all([
-      getInsulinRange(db, startDate, endDate),
-      getInsulinDailyTotals(db, startDate, endDate),
-      getInsulinStats(db, startDate, endDate),
-    ]);
+    const dailyTotals = await getInsulinDailyTotals(db, startDate, endDate);
+    const stats = await getInsulinStats(db, startDate, endDate, dailyTotals);
 
-    const body: InsulinAPIResponse = { doses, dailyTotals, stats };
+    const body: InsulinAPIResponse = { dailyTotals, stats };
+
+    // Only include raw doses for 24h (needed by glucose overlay)
+    if (range === '24h') {
+      body.doses = await getInsulinRange(db, startDate, endDate);
+    }
 
     return new Response(JSON.stringify(body), {
       headers: { 'Content-Type': 'application/json' },

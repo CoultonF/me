@@ -159,7 +159,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
-            <ActivitySummaryCards activityStats={activityStats} runningStats={runningStats} />
+            <ActivitySummaryCards activityStats={activityStats} />
           </ErrorBoundary>
 
           {/* ── Running analytics ── */}

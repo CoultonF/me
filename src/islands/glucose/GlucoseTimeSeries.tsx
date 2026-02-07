@@ -290,7 +290,7 @@ function ScatterDotChart({ readings }: { readings: GlucoseReading[] }) {
     setLoadingInsulin(true);
     fetch('/api/health/insulin?range=24h')
       .then((r) => r.json() as Promise<InsulinAPIResponse>)
-      .then((d) => setDoses(d.doses))
+      .then((d) => setDoses(d.doses ?? []))
       .catch(() => {})
       .finally(() => setLoadingInsulin(false));
   }, [showInsulin, doses.length]);

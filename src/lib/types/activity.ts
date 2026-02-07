@@ -1,13 +1,9 @@
 export interface Workout {
-  id: number;
   startTime: string;
-  endTime: string | null;
   distanceKm: number | null;
   durationSeconds: number | null;
   avgPaceSecPerKm: number | null;
   avgHeartRate: number | null;
-  maxHeartRate: number | null;
-  elevationGainM: number | null;
   activityName: string | null;
   activeCalories: number | null;
 }
