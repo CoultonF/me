@@ -84,7 +84,7 @@ export default function CalendarGrid({ days, month }: Props) {
       <div
         className="grid mb-1"
         style={{
-          gridTemplateColumns: `repeat(7, 1fr)`,
+          gridTemplateColumns: `repeat(7, minmax(0, 1fr))`,
           gap,
         }}
       >
@@ -102,7 +102,7 @@ export default function CalendarGrid({ days, month }: Props) {
       <div
         className="grid"
         style={{
-          gridTemplateColumns: `repeat(7, 1fr)`,
+          gridTemplateColumns: `repeat(7, minmax(0, 1fr))`,
           gap,
         }}
       >

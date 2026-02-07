@@ -1,8 +1,12 @@
 ---
 import SiteLayout from '@/layouts/SiteLayout.astro';
 import MonthlyCalendarDashboard from '@/islands/MonthlyCalendarDashboard';
+import CorrelationDashboard from '@/islands/CorrelationDashboard';
 ---
 
 <SiteLayout title="Dashboard | Coulton Fraser" activePath="/dashboard">
-  <MonthlyCalendarDashboard client:load />
+  <div class="space-y-6">
+    <MonthlyCalendarDashboard client:load />
+    <CorrelationDashboard client:load />
+  </div>
 </SiteLayout>
