@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import type { TrainingAPIResponse } from '../../lib/types/training';
+import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 import NextWorkoutCard from './NextWorkoutCard';
 import WeekSchedule from './WeekSchedule';
 import TrainingProgressStats from './TrainingProgressStats';
@@ -9,29 +11,24 @@ interface Props {
 
 export default function TrainingSchedule({ data }: Props) {
   const { stats, workouts } = data;
+  const [actualWorkouts, setActualWorkouts] = useState<Workout[]>([]);
+
+  // Fetch actual activity data to compare against plan
+  useEffect(() => {
+    fetch('/api/health/activity?range=365d')
+      .then((r) => r.ok ? r.json() as Promise<ActivityAPIResponse> : null)
+      .then((d) => { if (d) setActualWorkouts(d.workouts); })
+      .catch(() => {});
+  }, []);
 
   if (stats.totalWorkouts === 0) return null;
-
-  // Get current week workouts for WeekSchedule
-  const now = new Date();
-  const day = now.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const mondayStr = monday.toISOString().slice(0, 10);
-  const sundayStr = sunday.toISOString().slice(0, 10);
-  const weekWorkouts = workouts.filter((w) => w.date >= mondayStr && w.date <= sundayStr);
 
   return (
     <div className="space-y-4">
       <div className="text-xs font-medium text-dim uppercase tracking-wide">Training Plan</div>
       <TrainingProgressStats stats={stats} />
       {stats.nextWorkout && <NextWorkoutCard workout={stats.nextWorkout} />}
-      <WeekSchedule workouts={weekWorkouts} />
+      <WeekSchedule allWorkouts={workouts} actualWorkouts={actualWorkouts} planStartDate={stats.planStartDate} planEndDate={stats.planEndDate} />
     </div>
   );
 }
