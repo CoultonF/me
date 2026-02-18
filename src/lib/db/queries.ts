@@ -1,6 +1,6 @@
 import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -800,5 +800,66 @@ export async function getClaudeCodeTotals(db: Database, startDate: string, endDa
     totalTokens: (agg?.inputTokens ?? 0) + (agg?.outputTokens ?? 0),
     costCents: agg?.costCents ?? 0,
     days: agg?.days ?? 0,
+  };
+}
+
+// ── Training plan queries ──
+
+export async function getTrainingPlan(db: Database, startDate?: string, endDate?: string) {
+  const conditions = [];
+  if (startDate) conditions.push(gte(trainingPlan.date, startDate));
+  if (endDate) conditions.push(lte(trainingPlan.date, endDate));
+
+  return db
+    .select()
+    .from(trainingPlan)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(asc(trainingPlan.date));
+}
+
+export async function getTrainingPlanStats(db: Database) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [agg] = await db
+    .select({
+      totalWorkouts: count(),
+      totalPlannedKm: sql<number>`coalesce(sum(${trainingPlan.distanceKm}), 0)`,
+      completedCount: sql<number>`sum(case when ${trainingPlan.status} = 'completed' then 1 else 0 end)`,
+      skippedCount: sql<number>`sum(case when ${trainingPlan.status} = 'skipped' then 1 else 0 end)`,
+      upcomingCount: sql<number>`sum(case when ${trainingPlan.date} >= ${today} and ${trainingPlan.status} = 'planned' then 1 else 0 end)`,
+    })
+    .from(trainingPlan);
+
+  // Next upcoming workout
+  const [nextWorkout] = await db
+    .select()
+    .from(trainingPlan)
+    .where(and(gte(trainingPlan.date, today), eq(trainingPlan.status, 'planned')))
+    .orderBy(asc(trainingPlan.date))
+    .limit(1);
+
+  // Weekly volume
+  const weeklyVolume = await db
+    .select({
+      weekStart: sql<string>`date(${trainingPlan.date}, 'weekday 1', '-7 days')`.as('week_start'),
+      distanceKm: sql<number>`coalesce(sum(${trainingPlan.distanceKm}), 0)`,
+      workoutCount: count(),
+    })
+    .from(trainingPlan)
+    .groupBy(sql`date(${trainingPlan.date}, 'weekday 1', '-7 days')`)
+    .orderBy(sql`week_start`);
+
+  return {
+    totalWorkouts: agg?.totalWorkouts ?? 0,
+    totalPlannedKm: Math.round((agg?.totalPlannedKm ?? 0) * 10) / 10,
+    completedCount: agg?.completedCount ?? 0,
+    skippedCount: agg?.skippedCount ?? 0,
+    upcomingCount: agg?.upcomingCount ?? 0,
+    weeklyVolume: weeklyVolume.map((w) => ({
+      weekStart: w.weekStart,
+      distanceKm: Math.round(w.distanceKm * 10) / 10,
+      workoutCount: w.workoutCount,
+    })),
+    nextWorkout: nextWorkout ?? null,
   };
 }

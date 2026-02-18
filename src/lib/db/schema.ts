@@ -129,6 +129,22 @@ export const githubLanguages = sqliteTable('github_languages', {
   uniqueIndex('github_languages_repo_lang_idx').on(table.repoName, table.language),
 ]);
 
+// ── Training plan ──
+
+export const trainingPlan = sqliteTable('training_plan', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  title: text('title').notNull(),
+  description: text('description'),
+  workoutType: text('workout_type'), // easy, tempo, interval, long, recovery, race, progression
+  distanceKm: real('distance_km'),
+  targetPace: text('target_pace'), // e.g. "5:50"
+  status: text('status').default('planned'), // planned, completed, skipped
+  icalUid: text('ical_uid'),
+}, (table) => [
+  uniqueIndex('training_plan_date_uid_idx').on(table.date, table.icalUid),
+]);
+
 // ── Claude Code usage (Analytics API) ──
 
 export const claudeCodeDaily = sqliteTable('claude_code_daily', {
