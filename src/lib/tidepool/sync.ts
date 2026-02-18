@@ -185,28 +185,43 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
     return { inserted: 0, skipped: 0 };
   }
 
-  const workoutRows = activities.map((a) => {
-    const durationSec = a.duration ? convertDuration(a.duration.value, a.duration.units) : null;
-    const distKm = a.distance ? convertDistance(a.distance.value, a.distance.units) : null;
-    const calories = a.energy ? Math.round(a.energy.value) : null;
-    const endTime = durationSec
-      ? new Date(new Date(a.time).getTime() + durationSec * 1000).toISOString()
-      : null;
-    const pace = distKm && durationSec && distKm > 0
-      ? Math.round(durationSec / distKm)
-      : null;
+  let skipped = 0;
+  const workoutRows = activities
+    .map((a) => {
+      const durationSec = a.duration ? convertDuration(a.duration.value, a.duration.units) : null;
+      const distKm = a.distance ? convertDistance(a.distance.value, a.distance.units) : null;
+      const calories = a.energy ? Math.round(a.energy.value) : null;
+      const endTime = durationSec
+        ? new Date(new Date(a.time).getTime() + durationSec * 1000).toISOString()
+        : null;
+      const pace = distKm && durationSec && distKm > 0
+        ? Math.round(durationSec / distKm)
+        : null;
 
-    return {
-      startTime: a.time,
-      endTime,
-      distanceKm: distKm,
-      durationSeconds: durationSec ? Math.round(durationSec) : null,
-      avgPaceSecPerKm: pace,
-      activityName: extractActivityType(a.name),
-      activeCalories: calories,
-      source: 'tidepool' as const,
-    };
-  });
+      return {
+        startTime: a.time,
+        endTime,
+        distanceKm: distKm,
+        durationSeconds: durationSec ? Math.round(durationSec) : null,
+        avgPaceSecPerKm: pace,
+        activityName: extractActivityType(a.name),
+        activeCalories: calories,
+        source: 'tidepool' as const,
+      };
+    })
+    .filter((w) => {
+      // Skip micro-fragments (< 2 minutes)
+      if (w.durationSeconds !== null && w.durationSeconds < 120) {
+        skipped++;
+        return false;
+      }
+      // Skip phantom sessions (near-zero distance but long duration — tracker glitches)
+      if (w.distanceKm !== null && w.distanceKm < 0.1 && w.durationSeconds !== null && w.durationSeconds > 1800) {
+        skipped++;
+        return false;
+      }
+      return true;
+    });
 
   // Insert workouts — D1 has a 100-binding limit; each row = 8 params
   const BATCH_SIZE = 12;
@@ -249,7 +264,7 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
       });
   }
 
-  console.log(`[sync] Activity: processed ${inserted} workouts`);
+  console.log(`[sync] Activity: processed ${inserted} workouts, filtered ${skipped} junk entries`);
 
-  return { inserted, skipped: 0 };
+  return { inserted, skipped };
 }
