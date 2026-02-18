@@ -43,6 +43,16 @@
   --color-activity-exercise: #92e82a;
   --color-activity-stand: #00c7fc;
 
+  /* ── Training plan workout type colors ── */
+  --color-training-easy: #22c55e;
+  --color-training-recovery: #86efac;
+  --color-training-tempo: #f59e0b;
+  --color-training-interval: #ef4444;
+  --color-training-long: #8b5cf6;
+  --color-training-race: #eab308;
+  --color-training-progression: #0ea5e9;
+  --color-training-planned: #6366f1;
+
   /* ── Running / cycling chart colors ── */
   --color-running-pace: #0ea5e9;
   --color-running-distance: #8b5cf6;

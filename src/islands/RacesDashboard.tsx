@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { RacesAPIResponse } from '../lib/types/races';
+import type { TrainingStats, TrainingAPIResponse } from '../lib/types/training';
 import TargetRaceWidget from './races/TargetRaceWidget';
 import RaceStatsCards from './races/RaceStatsCards';
 import PersonalBests from './races/PersonalBests';
@@ -17,6 +18,7 @@ const emptyResponse: RacesAPIResponse = {
 
 export default function RacesDashboard() {
   const [data, setData] = useState<RacesAPIResponse | null>(null);
+  const [trainingStats, setTrainingStats] = useState<TrainingStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +38,14 @@ export default function RacesDashboard() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Fetch training stats for the target race widget
+  useEffect(() => {
+    fetch('/api/health/training?range=all')
+      .then((r) => r.ok ? r.json() as Promise<TrainingAPIResponse> : null)
+      .then((d) => { if (d) setTrainingStats(d.stats); })
+      .catch(() => {});
+  }, []);
 
   if (error) {
     return (
@@ -68,7 +78,7 @@ export default function RacesDashboard() {
         <>
           {target && (
             <ErrorBoundary fallbackTitle="Target race widget failed to load">
-              <TargetRaceWidget target={target} />
+              <TargetRaceWidget target={target} trainingStats={trainingStats} />
             </ErrorBoundary>
           )}
 

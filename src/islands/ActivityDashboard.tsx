@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ActivityAPIResponse } from '../lib/types/activity';
+import type { TrainingAPIResponse } from '../lib/types/training';
 import ActivityRings from './activity/ActivityRings';
 import WeeklyActivityChart from './activity/WeeklyActivityChart';
 import ActivityTrends from './activity/ActivityTrends';
@@ -12,6 +13,7 @@ import PaceProgression from './running/PaceProgression';
 import DistanceVolume from './running/DistanceVolume';
 import HRAnalysis from './running/HRAnalysis';
 import TargetRaceCountdown from './races/TargetRaceCountdown';
+import TrainingSchedule from './training/TrainingSchedule';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 import { useAuth } from './shared/useAuth';
@@ -47,6 +49,7 @@ const EMPTY_HR_ZONES = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
 export default function ActivityDashboard({ initialRange = '7d' }: Props) {
   const [range, setRange] = useState<Range>(initialRange);
   const [data, setData] = useState<ActivityAPIResponse | null>(null);
+  const [trainingData, setTrainingData] = useState<TrainingAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -70,6 +73,14 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
   useEffect(() => {
     fetchData(range);
   }, [range, fetchData]);
+
+  // One-time fetch for training plan data (independent of activity range)
+  useEffect(() => {
+    fetch('/api/health/training?range=all')
+      .then((r) => r.ok ? r.json() as Promise<TrainingAPIResponse> : null)
+      .then((d) => { if (d) setTrainingData(d); })
+      .catch(() => {});
+  }, []);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -171,6 +182,13 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
             <TargetRaceCountdown />
           </ErrorBoundary>
 
+          {/* ── Training plan schedule ── */}
+          {trainingData && trainingData.stats.totalWorkouts > 0 && (
+            <ErrorBoundary fallbackTitle="Training schedule failed to load">
+              <TrainingSchedule data={trainingData} />
+            </ErrorBoundary>
+          )}
+
           {/* ── Running analytics ── */}
           <ErrorBoundary fallbackTitle="Running summary failed to load">
             <RunningSummaryCards stats={runningStats} />
@@ -181,7 +199,7 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Distance chart failed to load">
-            <DistanceVolume weeklyDistances={data?.weeklyDistances ?? []} />
+            <DistanceVolume weeklyDistances={data?.weeklyDistances ?? []} plannedWeeklyVolume={trainingData?.stats.weeklyVolume} />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="HR analysis failed to load">

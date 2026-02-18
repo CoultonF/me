@@ -1,6 +1,7 @@
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -9,19 +10,26 @@ import {
 } from 'recharts';
 import type { WeeklyDistance } from '../../lib/types/activity';
 
+interface PlannedWeek {
+  weekStart: string;
+  distanceKm: number;
+  workoutCount: number;
+}
+
 interface Props {
   weeklyDistances: WeeklyDistance[];
+  plannedWeeklyVolume?: PlannedWeek[] | undefined;
+}
+
+interface MergedWeek extends WeeklyDistance {
+  plannedKm?: number | undefined;
 }
 
 function formatWeek(dateStr: string): string {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-interface DistanceTooltipPayload {
-  payload?: WeeklyDistance;
-}
-
-function DistanceTooltip({ active, payload }: { active?: boolean; payload?: DistanceTooltipPayload[] }) {
+function DistanceTooltip({ active, payload }: { active?: boolean; payload?: { payload?: MergedWeek }[] }) {
   if (!active || !payload?.[0]?.payload) return null;
   const d = payload[0].payload;
   return (
@@ -37,11 +45,19 @@ function DistanceTooltip({ active, payload }: { active?: boolean; payload?: Dist
       {d.cyclingDistanceKm > 0 && (
         <div className="text-xs text-subtle">Cycling: {d.cyclingDistanceKm.toFixed(1)} km</div>
       )}
+      {d.plannedKm != null && d.plannedKm > 0 && (
+        <div className="text-xs text-subtle mt-1 pt-1 border-t border-stroke">
+          Planned: {d.plannedKm.toFixed(1)} km
+          {d.totalDistanceKm > 0 && (
+            <span className="text-dim"> · {Math.round((d.totalDistanceKm / d.plannedKm) * 100)}% hit</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function DistanceVolume({ weeklyDistances }: Props) {
+export default function DistanceVolume({ weeklyDistances, plannedWeeklyVolume }: Props) {
   if (weeklyDistances.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
@@ -50,11 +66,23 @@ export default function DistanceVolume({ weeklyDistances }: Props) {
     );
   }
 
+  // Merge planned data into weekly distances by weekStart key
+  const plannedMap = new Map(
+    (plannedWeeklyVolume ?? []).map((p) => [p.weekStart, p.distanceKm]),
+  );
+
+  const mergedData: MergedWeek[] = weeklyDistances.map((w) => ({
+    ...w,
+    plannedKm: plannedMap.get(w.weekStart),
+  }));
+
+  const hasPlanned = mergedData.some((d) => d.plannedKm != null && d.plannedKm > 0);
+
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Weekly Distance</div>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={weeklyDistances} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
+        <ComposedChart data={mergedData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
           <XAxis
             dataKey="weekStart"
             tickFormatter={formatWeek}
@@ -71,6 +99,18 @@ export default function DistanceVolume({ weeklyDistances }: Props) {
           <Tooltip content={<DistanceTooltip />} cursor={{ fill: 'var(--color-stroke)', fillOpacity: 0.3 }} />
           <Bar dataKey="runningDistanceKm" stackId="distance" fill="var(--color-running-distance)" radius={[0, 0, 0, 0]} isAnimationActive={false} />
           <Bar dataKey="cyclingDistanceKm" stackId="distance" fill="var(--color-running-cycling)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          {hasPlanned && (
+            <Line
+              dataKey="plannedKm"
+              type="monotone"
+              stroke="var(--color-training-planned)"
+              strokeWidth={2}
+              strokeDasharray="6 3"
+              dot={false}
+              isAnimationActive={false}
+              connectNulls
+            />
+          )}
           <Legend
             content={() => (
               <div className="flex justify-center gap-4 mt-3">
@@ -82,10 +122,16 @@ export default function DistanceVolume({ weeklyDistances }: Props) {
                   <span className="size-2.5 rounded-sm" style={{ background: 'var(--color-running-cycling)' }} />
                   Cycling
                 </div>
+                {hasPlanned && (
+                  <div className="flex items-center gap-1.5 text-xs text-subtle">
+                    <span className="w-4 h-0 border-t-2 border-dashed" style={{ borderColor: 'var(--color-training-planned)' }} />
+                    Planned
+                  </div>
+                )}
               </div>
             )}
           />
-        </BarChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

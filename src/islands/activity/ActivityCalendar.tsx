@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 import type { RacesAPIResponse, RaceWithResult } from '../../lib/types/races';
+import type { TrainingWorkout, TrainingAPIResponse } from '../../lib/types/training';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
+import { getWorkoutColor, getWorkoutLabel } from '../training/workoutTypeColors';
 
 const MIN_CELL = 10;
 const GAP = 3;
@@ -14,24 +16,50 @@ interface RaceInfo {
   status: 'completed' | 'upcoming' | 'target';
 }
 
+interface TrainingInfo {
+  title: string;
+  workoutType: string | null;
+  distanceKm: number | null;
+}
+
 interface DayData {
   date: string;
   count: number;
   totalMinutes: number;
   totalDistanceKm: number;
   names: string[];
-  race?: RaceInfo;
+  race?: RaceInfo | undefined;
+  training?: TrainingInfo | undefined;
+  isFuture: boolean;
 }
 
-function buildCalendarData(workouts: Workout[], races: RaceWithResult[]): DayData[] {
+function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[]): DayData[] {
   const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const map = new Map<string, DayData>();
 
+  // Past 364 days + today
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [] });
+    map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
+  }
+
+  // Extend into future for upcoming training workouts (up to ~6 months)
+  const futureTraining = trainingWorkouts.filter((w) => w.date > today);
+  if (futureTraining.length > 0) {
+    const lastTrainingDate = futureTraining[futureTraining.length - 1]!.date;
+    const endDate = new Date(lastTrainingDate + 'T12:00:00');
+    // Fill from tomorrow to the last training date
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    for (let d = new Date(tomorrow); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      if (!map.has(key)) {
+        map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true });
+      }
+    }
   }
 
   for (const w of workouts) {
@@ -59,7 +87,18 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[]): DayDat
     }
   }
 
-  return Array.from(map.values());
+  for (const t of trainingWorkouts) {
+    const entry = map.get(t.date);
+    if (entry) {
+      entry.training = {
+        title: t.title,
+        workoutType: t.workoutType,
+        distanceKm: t.distanceKm,
+      };
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function getIntensityClass(d: DayData): string {
@@ -100,9 +139,31 @@ function MedalIcon({ size }: { size: number }) {
   );
 }
 
+function StripedCell({ size, color }: { size: number; color: string }) {
+  return (
+    <svg className="absolute inset-0 size-full rounded-sm overflow-hidden" viewBox={`0 0 ${size} ${size}`}>
+      <rect width={size} height={size} fill="transparent" />
+      {/* Diagonal stripes */}
+      {Array.from({ length: Math.ceil(size / 3) + 1 }, (_, i) => (
+        <line
+          key={i}
+          x1={i * 4 - size}
+          y1={size}
+          x2={i * 4}
+          y2={0}
+          stroke={color}
+          strokeWidth={1.5}
+          strokeOpacity={0.5}
+        />
+      ))}
+    </svg>
+  );
+}
+
 export default function ActivityCalendar() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [races, setRaces] = useState<RaceWithResult[]>([]);
+  const [trainingWorkouts, setTrainingWorkouts] = useState<TrainingWorkout[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -116,9 +177,15 @@ export default function ActivityCalendar() {
       .then((d) => [...d.completed, ...d.upcoming])
       .catch(() => [] as RaceWithResult[]);
 
-    Promise.all([activityPromise, racesPromise]).then(([w, r]) => {
+    const trainingPromise = fetch('/api/health/training?range=all')
+      .then((r) => r.json() as Promise<TrainingAPIResponse>)
+      .then((d) => d.workouts)
+      .catch(() => [] as TrainingWorkout[]);
+
+    Promise.all([activityPromise, racesPromise, trainingPromise]).then(([w, r, t]) => {
       setWorkouts(w);
       setRaces(r);
+      setTrainingWorkouts(t);
       setLoaded(true);
     });
   }, []);
@@ -131,13 +198,14 @@ export default function ActivityCalendar() {
     );
   }
 
-  const data = buildCalendarData(workouts, races);
-  const activeDays = data.filter((d) => d.count > 0).length;
+  const data = buildCalendarData(workouts, races, trainingWorkouts);
+  const activeDays = data.filter((d) => d.count > 0 && !d.isFuture).length;
+  const pastDays = data.filter((d) => !d.isFuture).length;
 
-  return <GridView data={data} activeDays={activeDays} />;
+  return <GridView data={data} activeDays={activeDays} pastDays={pastDays} />;
 }
 
-function GridView({ data, activeDays }: { data: DayData[]; activeDays: number }) {
+function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays: number; pastDays: number }) {
   const [containerRef, containerWidth] = useContainerWidth();
 
   const weeks: DayData[][] = [];
@@ -147,7 +215,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
   if (data.length > 0) {
     const firstDow = new Date(data[0]!.date + 'T12:00:00').getDay();
     for (let i = 0; i < firstDow; i++) {
-      currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [] });
+      currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
     }
   }
 
@@ -159,7 +227,7 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
     }
   }
   if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [] });
+    while (currentWeek.length < 7) currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
     weeks.push(currentWeek);
   }
 
@@ -184,13 +252,14 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
   });
 
   const gridW = cols * cellSize + (cols - 1) * GAP;
+  const hasTraining = data.some((d) => d.training && d.isFuture);
 
   return (
     <div ref={containerRef} className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="text-xs font-medium text-dim uppercase tracking-wide">Activity Calendar</div>
         <div className="text-xs text-dim">
-          {activeDays}/{data.length} days active
+          {activeDays}/{pastDays} days active
         </div>
       </div>
 
@@ -225,36 +294,67 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
               }}
             >
               {weeks.flatMap((week, wi) =>
-                week.map((d, di) => (
-                  <div key={`${wi}-${di}`} className="relative group">
-                    <div className={`size-full rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d)}`} />
-                    {d.race && <MedalIcon size={cellSize} />}
-                    {d.count >= 0 && (
-                      <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none ${di <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
-                        <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                          <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
-                          {d.race && (
-                            <div className="text-yellow-500 font-medium mt-0.5">
-                              {d.race.name} ({d.race.distance})
-                              {d.race.chipTime && <> &middot; {d.race.chipTime}</>}
-                            </div>
-                          )}
-                          {d.count === 0 ? (
-                            !d.race && <div className="text-dim mt-0.5">Rest day</div>
-                          ) : (
-                            <>
-                              <div className="text-subtle mt-0.5">
-                                {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
-                                {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
+                week.map((d, di) => {
+                  const isFutureWithTraining = d.isFuture && d.training;
+                  const isFutureEmpty = d.isFuture && !d.training;
+                  const trainingColor = d.training ? getWorkoutColor(d.training.workoutType) : '';
+
+                  return (
+                    <div key={`${wi}-${di}`} className="relative group">
+                      <div
+                        className={`size-full rounded-sm ${
+                          d.count < 0
+                            ? 'bg-transparent'
+                            : isFutureEmpty
+                              ? 'bg-transparent'
+                              : isFutureWithTraining
+                                ? ''
+                                : getIntensityClass(d)
+                        }`}
+                      />
+                      {isFutureWithTraining && <StripedCell size={cellSize} color={trainingColor} />}
+                      {d.race && <MedalIcon size={cellSize} />}
+                      {d.count >= 0 && d.date && (
+                        <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none ${di <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
+                          <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
+                            <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
+                            {d.race && (
+                              <div className="text-yellow-500 font-medium mt-0.5">
+                                {d.race.name} ({d.race.distance})
+                                {d.race.chipTime && <> &middot; {d.race.chipTime}</>}
                               </div>
-                              <div className="text-dim">{d.names.join(', ')}</div>
-                            </>
-                          )}
+                            )}
+                            {d.training && d.isFuture && (
+                              <div className="mt-0.5 flex items-center gap-1.5">
+                                <span
+                                  className="inline-block text-[9px] font-medium px-1 py-0.5 rounded leading-none"
+                                  style={{ background: trainingColor, color: '#fff' }}
+                                >
+                                  {getWorkoutLabel(d.training.workoutType)}
+                                </span>
+                                <span className="text-body">{d.training.title}</span>
+                                {d.training.distanceKm != null && d.training.distanceKm > 0 && (
+                                  <span className="text-dim">{d.training.distanceKm} km</span>
+                                )}
+                              </div>
+                            )}
+                            {!d.isFuture && d.count === 0 ? (
+                              !d.race && !d.training && <div className="text-dim mt-0.5">Rest day</div>
+                            ) : !d.isFuture && d.count > 0 ? (
+                              <>
+                                <div className="text-subtle mt-0.5">
+                                  {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
+                                  {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
+                                </div>
+                                <div className="text-dim">{d.names.join(', ')}</div>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -276,6 +376,19 @@ function GridView({ data, activeDays }: { data: DayData[]; activeDays: number })
           <path d="M8 7.8l.9 1.8 2 .3-1.4 1.4.3 2L8 12.3l-1.8 1 .3-2-1.4-1.4 2-.3z" fill="#EAB308" />
         </svg>
         <span>Race</span>
+        {hasTraining && (
+          <>
+            <span className="ml-1">|</span>
+            <div className="size-3 rounded-sm relative overflow-hidden">
+              <svg className="absolute inset-0 size-full" viewBox="0 0 12 12">
+                <line x1="0" y1="12" x2="4" y2="0" stroke="var(--color-training-planned)" strokeWidth="1.5" strokeOpacity="0.5" />
+                <line x1="4" y1="12" x2="8" y2="0" stroke="var(--color-training-planned)" strokeWidth="1.5" strokeOpacity="0.5" />
+                <line x1="8" y1="12" x2="12" y2="0" stroke="var(--color-training-planned)" strokeWidth="1.5" strokeOpacity="0.5" />
+              </svg>
+            </div>
+            <span>Planned</span>
+          </>
+        )}
       </div>
     </div>
   );

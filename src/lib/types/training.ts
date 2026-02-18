@@ -12,9 +12,12 @@ export interface TrainingWorkout {
 export interface TrainingStats {
   totalWorkouts: number;
   totalPlannedKm: number;
+  completedKm: number;
   completedCount: number;
   skippedCount: number;
   upcomingCount: number;
+  planStartDate: string | null;
+  planEndDate: string | null;
   weeklyVolume: { weekStart: string; distanceKm: number; workoutCount: number }[];
   nextWorkout: TrainingWorkout | null;
 }

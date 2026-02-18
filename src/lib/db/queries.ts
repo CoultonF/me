@@ -824,9 +824,12 @@ export async function getTrainingPlanStats(db: Database) {
     .select({
       totalWorkouts: count(),
       totalPlannedKm: sql<number>`coalesce(sum(${trainingPlan.distanceKm}), 0)`,
+      completedKm: sql<number>`coalesce(sum(case when ${trainingPlan.status} = 'completed' then ${trainingPlan.distanceKm} else 0 end), 0)`,
       completedCount: sql<number>`sum(case when ${trainingPlan.status} = 'completed' then 1 else 0 end)`,
       skippedCount: sql<number>`sum(case when ${trainingPlan.status} = 'skipped' then 1 else 0 end)`,
       upcomingCount: sql<number>`sum(case when ${trainingPlan.date} >= ${today} and ${trainingPlan.status} = 'planned' then 1 else 0 end)`,
+      planStartDate: sql<string | null>`min(${trainingPlan.date})`,
+      planEndDate: sql<string | null>`max(${trainingPlan.date})`,
     })
     .from(trainingPlan);
 
@@ -852,9 +855,12 @@ export async function getTrainingPlanStats(db: Database) {
   return {
     totalWorkouts: agg?.totalWorkouts ?? 0,
     totalPlannedKm: Math.round((agg?.totalPlannedKm ?? 0) * 10) / 10,
+    completedKm: Math.round((agg?.completedKm ?? 0) * 10) / 10,
     completedCount: agg?.completedCount ?? 0,
     skippedCount: agg?.skippedCount ?? 0,
     upcomingCount: agg?.upcomingCount ?? 0,
+    planStartDate: agg?.planStartDate ?? null,
+    planEndDate: agg?.planEndDate ?? null,
     weeklyVolume: weeklyVolume.map((w) => ({
       weekStart: w.weekStart,
       distanceKm: Math.round(w.distanceKm * 10) / 10,

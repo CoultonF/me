@@ -9,9 +9,12 @@ const emptyResponse: TrainingAPIResponse = {
   stats: {
     totalWorkouts: 0,
     totalPlannedKm: 0,
+    completedKm: 0,
     completedCount: 0,
     skippedCount: 0,
     upcomingCount: 0,
+    planStartDate: null,
+    planEndDate: null,
     weeklyVolume: [],
     nextWorkout: null,
   },
