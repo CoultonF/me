@@ -159,6 +159,34 @@ function extractActivityType(name: string): string {
   return dash > 0 ? name.slice(0, dash) : name;
 }
 
+async function rebuildActivitySummaries(db: Database): Promise<void> {
+  const allDayRows = await db
+    .select({
+      date: sql<string>`substr(${runningSessions.startTime}, 1, 10)`,
+      totalCalories: sql<number>`coalesce(sum(${runningSessions.activeCalories}), 0)`,
+      totalMinutes: sql<number>`coalesce(sum(${runningSessions.durationSeconds}), 0) / 60.0`,
+    })
+    .from(runningSessions)
+    .groupBy(sql`substr(${runningSessions.startTime}, 1, 10)`);
+
+  for (const row of allDayRows) {
+    await db
+      .insert(activitySummaries)
+      .values({
+        date: row.date,
+        activeCalories: Math.round(row.totalCalories),
+        exerciseMinutes: Math.round(row.totalMinutes),
+      })
+      .onConflictDoUpdate({
+        target: activitySummaries.date,
+        set: {
+          activeCalories: Math.round(row.totalCalories),
+          exerciseMinutes: Math.round(row.totalMinutes),
+        },
+      });
+  }
+}
+
 export async function syncActivityData(db: Database, env: SyncEnv, startMs?: number, endMs?: number, session?: { token: string; userId: string }): Promise<SyncResult> {
   if (!session) {
     try {
@@ -182,6 +210,7 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
   }
 
   if (activities.length === 0) {
+    await rebuildActivitySummaries(db);
     return { inserted: 0, skipped: 0 };
   }
 
@@ -223,12 +252,56 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
       return true;
     });
 
+  // Within-batch dedup: if two workouts have the same activity name and
+  // start within ±5 minutes, keep only the first occurrence.
+  const DEDUP_WINDOW_MS = 5 * 60 * 1000;
+  const dedupedRows: typeof workoutRows = [];
+  const sortedRows = [...workoutRows].sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+  );
+  for (const row of sortedRows) {
+    const rowMs = new Date(row.startTime).getTime();
+    const isDupe = dedupedRows.some(
+      (kept) =>
+        kept.activityName === row.activityName &&
+        Math.abs(new Date(kept.startTime).getTime() - rowMs) < DEDUP_WINDOW_MS,
+    );
+    if (!isDupe) {
+      dedupedRows.push(row);
+    } else {
+      skipped++;
+    }
+  }
+
+  // Cross-sync dedup: skip workouts that already exist in DB within ±5 minutes
+  // with the same activity name (catches Apple Watch + iPhone duplicate uploads)
+  const existingSessions = await db
+    .select({
+      startTime: runningSessions.startTime,
+      activityName: runningSessions.activityName,
+    })
+    .from(runningSessions);
+
+  const finalRows = dedupedRows.filter((row) => {
+    const rowMs = new Date(row.startTime).getTime();
+    const existsInDb = existingSessions.some(
+      (existing) =>
+        existing.activityName === row.activityName &&
+        Math.abs(new Date(existing.startTime).getTime() - rowMs) < DEDUP_WINDOW_MS,
+    );
+    if (existsInDb) {
+      skipped++;
+      return false;
+    }
+    return true;
+  });
+
   // Insert workouts — D1 has a 100-binding limit; each row = 8 params
   const BATCH_SIZE = 12;
   let inserted = 0;
 
-  for (let i = 0; i < workoutRows.length; i += BATCH_SIZE) {
-    const batch = workoutRows.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < finalRows.length; i += BATCH_SIZE) {
+    const batch = finalRows.slice(i, i + BATCH_SIZE);
     await db
       .insert(runningSessions)
       .values(batch)
@@ -238,31 +311,7 @@ export async function syncActivityData(db: Database, env: SyncEnv, startMs?: num
 
   // Rebuild activitySummaries for ALL dates with workouts in DB
   // This ensures any previously corrupted data gets corrected
-  const allDayRows = await db
-    .select({
-      date: sql<string>`substr(${runningSessions.startTime}, 1, 10)`,
-      totalCalories: sql<number>`coalesce(sum(${runningSessions.activeCalories}), 0)`,
-      totalMinutes: sql<number>`coalesce(sum(${runningSessions.durationSeconds}), 0) / 60.0`,
-    })
-    .from(runningSessions)
-    .groupBy(sql`substr(${runningSessions.startTime}, 1, 10)`);
-
-  for (const row of allDayRows) {
-    await db
-      .insert(activitySummaries)
-      .values({
-        date: row.date,
-        activeCalories: Math.round(row.totalCalories),
-        exerciseMinutes: Math.round(row.totalMinutes),
-      })
-      .onConflictDoUpdate({
-        target: activitySummaries.date,
-        set: {
-          activeCalories: Math.round(row.totalCalories),
-          exerciseMinutes: Math.round(row.totalMinutes),
-        },
-      });
-  }
+  await rebuildActivitySummaries(db);
 
   console.log(`[sync] Activity: processed ${inserted} workouts, filtered ${skipped} junk entries`);
 
