@@ -1,4 +1,5 @@
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
+import { localDateStr } from '../shared/dates';
 
 const GAP = 3;
 const DAY_W = 24;
@@ -45,8 +46,8 @@ export default function ContributionCalendar({ contributions, totalContributions
   const now = new Date();
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - i);
+    const key = localDateStr(d);
     days.push({ date: key, count: contribMap.get(key) ?? 0 });
   }
 

@@ -4,6 +4,7 @@ import MonthNavigator from './calendar/MonthNavigator';
 import CalendarGrid from './calendar/CalendarGrid';
 import ErrorBoundary from './shared/ErrorBoundary';
 import Skeleton from './shared/Skeleton';
+import { utcToLocalDate } from './shared/dates';
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -19,7 +20,7 @@ function buildCalendarDays(data: CalendarAPIResponse): CalendarDay[] {
   // Index glucose readings by date
   const readingsByDate = new Map<string, { timestamp: string; value: number }[]>();
   for (const r of data.glucoseReadings) {
-    const date = r.timestamp.slice(0, 10);
+    const date = utcToLocalDate(r.timestamp);
     const arr = readingsByDate.get(date) ?? [];
     arr.push(r);
     readingsByDate.set(date, arr);
@@ -40,7 +41,7 @@ function buildCalendarDays(data: CalendarAPIResponse): CalendarDay[] {
   // Index workouts by date
   const workoutsByDate = new Map<string, CalendarDay['workouts']>();
   for (const w of data.workouts) {
-    const date = w.startTime.slice(0, 10);
+    const date = utcToLocalDate(w.startTime);
     const arr = workoutsByDate.get(date) ?? [];
     arr.push({
       activityName: w.activityName,

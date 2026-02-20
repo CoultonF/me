@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { TrainingWorkout } from '../../lib/types/training';
 import type { Workout } from '../../lib/types/activity';
 import { getWorkoutColor } from './workoutTypeColors';
+import { localDateStr, utcToLocalDate } from '../shared/dates';
 
 interface Props {
   allWorkouts: TrainingWorkout[];
@@ -14,16 +15,16 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function getWeekDates(offset: number): string[] {
   const now = new Date();
-  const day = now.getUTCDay(); // 0=Sun
+  const day = now.getDay(); // 0=Sun
   const mondayOffset = day === 0 ? -6 : 1 - day;
   const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() + mondayOffset + offset * 7);
-  monday.setUTCHours(12, 0, 0, 0);
+  monday.setDate(now.getDate() + mondayOffset + offset * 7);
+  monday.setHours(12, 0, 0, 0);
 
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
-    d.setUTCDate(monday.getUTCDate() + i);
-    return d.toISOString().slice(0, 10);
+    d.setDate(monday.getDate() + i);
+    return localDateStr(d);
   });
 }
 
@@ -53,7 +54,7 @@ export default function WeekSchedule({ allWorkouts, actualWorkouts, planStartDat
   const actualByDate = useMemo(() => {
     const map = new Map<string, number>();
     for (const w of actualWorkouts) {
-      const date = w.startTime.slice(0, 10);
+      const date = utcToLocalDate(w.startTime);
       map.set(date, (map.get(date) ?? 0) + (w.distanceKm ?? 0));
     }
     return map;

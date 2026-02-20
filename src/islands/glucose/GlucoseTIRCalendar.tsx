@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { GlucoseAPIResponse, GlucoseDailyTIR } from '../../lib/types/glucose';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
+import { localDateStr } from '../shared/dates';
 
 const MIN_CELL = 10;
 const GAP = 3;
@@ -18,8 +19,8 @@ function buildCalendarData(tirData: GlucoseDailyTIR[]): DayData[] {
 
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - i);
+    const key = localDateStr(d);
     map.set(key, { date: key, tirPercent: -1, count: 0 });
   }
 

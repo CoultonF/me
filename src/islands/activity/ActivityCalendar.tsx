@@ -3,6 +3,7 @@ import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
 import type { RacesAPIResponse, RaceWithResult } from '../../lib/types/races';
 import type { TrainingWorkout, TrainingAPIResponse } from '../../lib/types/training';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
+import { localDateStr, utcToLocalDate } from '../shared/dates';
 import { getWorkoutColor, getWorkoutLabel } from '../training/workoutTypeColors';
 
 const MIN_CELL = 10;
@@ -35,14 +36,14 @@ interface DayData {
 
 function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[]): DayData[] {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = localDateStr(now);
   const map = new Map<string, DayData>();
 
   // Past 364 days + today
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - i);
+    const key = localDateStr(d);
     map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
   }
 
@@ -50,12 +51,12 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
   const futureTraining = trainingWorkouts.filter((w) => w.date > today);
   if (futureTraining.length > 0) {
     const lastTrainingDate = futureTraining[futureTraining.length - 1]!.date;
-    const endDate = new Date(lastTrainingDate + 'T12:00:00Z');
+    const endDate = new Date(lastTrainingDate + 'T12:00:00');
     // Fill from tomorrow to the last training date
     const tomorrow = new Date(now);
-    tomorrow.setUTCDate(now.getUTCDate() + 1);
-    for (let d = new Date(tomorrow); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
-      const key = d.toISOString().slice(0, 10);
+    tomorrow.setDate(now.getDate() + 1);
+    for (let d = new Date(tomorrow); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const key = localDateStr(d);
       if (!map.has(key)) {
         map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true });
       }
@@ -63,7 +64,7 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
   }
 
   for (const w of workouts) {
-    const key = w.startTime.slice(0, 10);
+    const key = utcToLocalDate(w.startTime);
     const entry = map.get(key);
     if (entry) {
       entry.count++;

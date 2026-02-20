@@ -8,6 +8,7 @@ import BlendedCalendar from './correlation/BlendedCalendar';
 import WeeklyTrendChart from './correlation/WeeklyTrendChart';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
+import { localDateStr, utcToLocalDate } from './shared/dates';
 
 function mergeDays(
   glucose: GlucoseAPIResponse | null,
@@ -20,8 +21,8 @@ function mergeDays(
   const now = new Date();
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - i);
+    const key = localDateStr(d);
     map.set(key, {
       date: key,
       tirPercent: null,
@@ -56,7 +57,7 @@ function mergeDays(
       }
     }
     for (const w of activity.workouts) {
-      const key = w.startTime.slice(0, 10);
+      const key = utcToLocalDate(w.startTime);
       const entry = map.get(key);
       if (entry) {
         entry.workoutCount++;
