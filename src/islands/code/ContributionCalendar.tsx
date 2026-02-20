@@ -1,5 +1,6 @@
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 import { localDateStr } from '../shared/dates';
+import { CalendarTooltip } from '../shared/CalendarTooltip';
 
 const GAP = 3;
 const DAY_W = 24;
@@ -139,21 +140,19 @@ export default function ContributionCalendar({ contributions, totalContributions
             >
               {weeks.flatMap((week, wi) =>
                 week.map((d, di) => (
-                  <div key={`${wi}-${di}`} className="relative group">
-                    <div
-                      className={`size-full rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d.count)}`}
-                    />
-                    {d.count >= 0 && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
-                        <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                          <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
-                          <div className="text-subtle mt-0.5">
-                            {d.count === 0 ? 'No contributions' : `${d.count} contribution${d.count > 1 ? 's' : ''}`}
-                          </div>
+                  <CalendarTooltip
+                    key={`${wi}-${di}`}
+                    content={d.count >= 0 ? (
+                      <>
+                        <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
+                        <div className="text-subtle mt-0.5">
+                          {d.count === 0 ? 'No contributions' : `${d.count} contribution${d.count > 1 ? 's' : ''}`}
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      </>
+                    ) : null}
+                  >
+                    <div className={`rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d.count)}`} style={{ width: cellSize, height: cellSize }} />
+                  </CalendarTooltip>
                 ))
               )}
             </div>

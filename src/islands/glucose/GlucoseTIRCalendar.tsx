@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { GlucoseAPIResponse, GlucoseDailyTIR } from '../../lib/types/glucose';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 import { localDateStr } from '../shared/dates';
+import { CalendarTooltip } from '../shared/CalendarTooltip';
 
 const MIN_CELL = 10;
 const GAP = 3;
@@ -165,23 +166,23 @@ function GridView({ data, daysWithData }: { data: DayData[]; daysWithData: numbe
             >
               {weeks.flatMap((week, wi) =>
                 week.map((d, di) => (
-                  <div key={`${wi}-${di}`} className="relative group">
-                    <div className={`size-full rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d)}`} />
-                    {d.count >= 0 && (
-                      <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none ${di <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
-                        <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                          <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
-                          {d.count === 0 ? (
-                            <div className="text-dim mt-0.5">No data</div>
-                          ) : (
-                            <div className="text-subtle mt-0.5">
-                              {d.tirPercent}% in range &middot; {d.count} readings
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <CalendarTooltip
+                    key={`${wi}-${di}`}
+                    content={d.count >= 0 ? (
+                      <>
+                        <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
+                        {d.count === 0 ? (
+                          <div className="text-dim mt-0.5">No data</div>
+                        ) : (
+                          <div className="text-subtle mt-0.5">
+                            {d.tirPercent}% in range &middot; {d.count} readings
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  >
+                    <div className={`rounded-sm ${d.count < 0 ? 'bg-transparent' : getIntensityClass(d)}`} style={{ width: cellSize, height: cellSize }} />
+                  </CalendarTooltip>
                 ))
               )}
             </div>

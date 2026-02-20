@@ -4,6 +4,7 @@ import type { RacesAPIResponse, RaceWithResult } from '../../lib/types/races';
 import type { TrainingWorkout, TrainingAPIResponse } from '../../lib/types/training';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 import { localDateStr, utcToLocalDate } from '../shared/dates';
+import { CalendarTooltip } from '../shared/CalendarTooltip';
 import { getWorkoutColor, getWorkoutLabel } from '../training/workoutTypeColors';
 
 const MIN_CELL = 10;
@@ -301,59 +302,62 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
                   const trainingColor = d.training ? getWorkoutColor(d.training.workoutType) : '';
 
                   return (
-                    <div key={`${wi}-${di}`} className="relative group">
-                      <div
-                        className={`size-full rounded-sm ${
-                          d.count < 0
-                            ? 'bg-transparent'
-                            : isFutureEmpty
+                    <CalendarTooltip
+                      key={`${wi}-${di}`}
+                      content={d.count >= 0 && d.date ? (
+                        <>
+                          <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
+                          {d.race && (
+                            <div className="text-yellow-500 font-medium mt-0.5">
+                              {d.race.name} ({d.race.distance})
+                              {d.race.chipTime && <> &middot; {d.race.chipTime}</>}
+                            </div>
+                          )}
+                          {d.training && d.isFuture && (
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              <span
+                                className="inline-block text-[9px] font-medium px-1 py-0.5 rounded leading-none"
+                                style={{ background: trainingColor, color: '#fff' }}
+                              >
+                                {getWorkoutLabel(d.training.workoutType)}
+                              </span>
+                              <span className="text-body">{d.training.title}</span>
+                              {d.training.distanceKm != null && d.training.distanceKm > 0 && (
+                                <span className="text-dim">{d.training.distanceKm} km</span>
+                              )}
+                            </div>
+                          )}
+                          {!d.isFuture && d.count === 0 ? (
+                            !d.race && !d.training && <div className="text-dim mt-0.5">Rest day</div>
+                          ) : !d.isFuture && d.count > 0 ? (
+                            <>
+                              <div className="text-subtle mt-0.5">
+                                {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
+                                {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
+                              </div>
+                              <div className="text-dim">{d.names.join(', ')}</div>
+                            </>
+                          ) : null}
+                        </>
+                      ) : null}
+                    >
+                      <div className="relative">
+                        <div
+                          className={`size-full rounded-sm ${
+                            d.count < 0
                               ? 'bg-transparent'
-                              : isFutureWithTraining
-                                ? ''
-                                : getIntensityClass(d)
-                        }`}
-                      />
-                      {isFutureWithTraining && <StripedCell size={cellSize} color={trainingColor} />}
-                      {d.race && <MedalIcon size={cellSize} />}
-                      {d.count >= 0 && d.date && (
-                        <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none ${di <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
-                          <div className="bg-tile border border-stroke rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                            <div className="font-medium text-body">{formatDateLabel(d.date)}</div>
-                            {d.race && (
-                              <div className="text-yellow-500 font-medium mt-0.5">
-                                {d.race.name} ({d.race.distance})
-                                {d.race.chipTime && <> &middot; {d.race.chipTime}</>}
-                              </div>
-                            )}
-                            {d.training && d.isFuture && (
-                              <div className="mt-0.5 flex items-center gap-1.5">
-                                <span
-                                  className="inline-block text-[9px] font-medium px-1 py-0.5 rounded leading-none"
-                                  style={{ background: trainingColor, color: '#fff' }}
-                                >
-                                  {getWorkoutLabel(d.training.workoutType)}
-                                </span>
-                                <span className="text-body">{d.training.title}</span>
-                                {d.training.distanceKm != null && d.training.distanceKm > 0 && (
-                                  <span className="text-dim">{d.training.distanceKm} km</span>
-                                )}
-                              </div>
-                            )}
-                            {!d.isFuture && d.count === 0 ? (
-                              !d.race && !d.training && <div className="text-dim mt-0.5">Rest day</div>
-                            ) : !d.isFuture && d.count > 0 ? (
-                              <>
-                                <div className="text-subtle mt-0.5">
-                                  {d.count} workout{d.count > 1 ? 's' : ''} &middot; {d.totalMinutes} min
-                                  {d.totalDistanceKm > 0 && <> &middot; {d.totalDistanceKm.toFixed(1)} km</>}
-                                </div>
-                                <div className="text-dim">{d.names.join(', ')}</div>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                              : isFutureEmpty
+                                ? 'bg-transparent'
+                                : isFutureWithTraining
+                                  ? ''
+                                  : getIntensityClass(d)
+                          }`}
+                          style={{ width: cellSize, height: cellSize }}
+                        />
+                        {isFutureWithTraining && <StripedCell size={cellSize} color={trainingColor} />}
+                        {d.race && <MedalIcon size={cellSize} />}
+                      </div>
+                    </CalendarTooltip>
                   );
                 })
               )}
