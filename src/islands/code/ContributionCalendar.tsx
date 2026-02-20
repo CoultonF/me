@@ -45,7 +45,7 @@ export default function ContributionCalendar({ contributions, totalContributions
   const now = new Date();
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
     const key = d.toISOString().slice(0, 10);
     days.push({ date: key, count: contribMap.get(key) ?? 0 });
   }

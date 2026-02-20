@@ -41,7 +41,7 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
   // Past 364 days + today
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
     const key = d.toISOString().slice(0, 10);
     map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
   }
@@ -50,11 +50,11 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
   const futureTraining = trainingWorkouts.filter((w) => w.date > today);
   if (futureTraining.length > 0) {
     const lastTrainingDate = futureTraining[futureTraining.length - 1]!.date;
-    const endDate = new Date(lastTrainingDate + 'T12:00:00');
+    const endDate = new Date(lastTrainingDate + 'T12:00:00Z');
     // Fill from tomorrow to the last training date
     const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    for (let d = new Date(tomorrow); d <= endDate; d.setDate(d.getDate() + 1)) {
+    tomorrow.setUTCDate(now.getUTCDate() + 1);
+    for (let d = new Date(tomorrow); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
       const key = d.toISOString().slice(0, 10);
       if (!map.has(key)) {
         map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true });

@@ -18,7 +18,7 @@ function buildCalendarData(tirData: GlucoseDailyTIR[]): DayData[] {
 
   for (let i = 364; i >= 0; i--) {
     const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
     const key = d.toISOString().slice(0, 10);
     map.set(key, { date: key, tirPercent: -1, count: 0 });
   }
