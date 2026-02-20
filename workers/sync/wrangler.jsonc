@@ -11,7 +11,7 @@
     }
   ],
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": ["*/15 * * * *", "0 8 * * *"]
   }
   // Set TIDEPOOL_EMAIL and TIDEPOOL_PASSWORD as secrets:
   // wrangler secret put TIDEPOOL_EMAIL

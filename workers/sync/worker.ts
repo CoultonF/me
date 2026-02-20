@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../src/lib/db/schema';
 import { syncGlucoseReadings, syncInsulinDoses, syncActivityData } from '../../src/lib/tidepool/sync';
 import { syncStravaHeartRate } from '../../src/lib/strava/sync';
+import { syncGitHub } from '../../src/lib/github/sync';
 
 interface Env {
   DB: D1Database;
@@ -9,12 +10,23 @@ interface Env {
   TIDEPOOL_PASSWORD: string;
   STRAVA_CLIENT_ID: string;
   STRAVA_CLIENT_SECRET: string;
+  GITHUB_TOKEN: string;
+  GITHUB_USERNAME: string;
   SYNC_SECRET?: string;
 }
 
 export default {
-  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
     const db = drizzle(env.DB, { schema });
+
+    // Daily at 8am UTC: sync GitHub contributions
+    if (event.cron === '0 8 * * *') {
+      const github = await syncGitHub(db, env);
+      console.log('[cron] GitHub sync result:', JSON.stringify(github));
+      return;
+    }
+
+    // Every 15 min: sync health data
     const [glucose, insulin, activity, strava] = await Promise.all([
       syncGlucoseReadings(db, env),
       syncInsulinDoses(db, env),
