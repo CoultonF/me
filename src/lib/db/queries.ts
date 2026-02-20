@@ -1,6 +1,6 @@
 import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan, gifts } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -868,4 +868,77 @@ export async function getTrainingPlanStats(db: Database) {
     })),
     nextWorkout: nextWorkout ?? null,
   };
+}
+
+// ── Gift queries ──
+
+export async function getGifts(db: Database) {
+  return db
+    .select()
+    .from(gifts)
+    .orderBy(desc(gifts.dateAdded));
+}
+
+export async function getGiftsByCategories(db: Database, categories: string[]) {
+  if (categories.length === 0) return [];
+  return db
+    .select()
+    .from(gifts)
+    .where(
+      and(
+        eq(gifts.purchased, false),
+        sql`${gifts.category} IN (${sql.join(categories.map((c) => sql`${c}`), sql`, `)})`,
+      ),
+    )
+    .orderBy(desc(gifts.dateAdded));
+}
+
+export async function insertGift(
+  db: Database,
+  data: {
+    name: string;
+    price?: number | null;
+    url?: string | null;
+    store?: string | null;
+    rating?: number | null;
+    dateAdded: string;
+    category: string;
+    notes?: string | null;
+    purchased?: boolean;
+  },
+) {
+  const rows = await db.insert(gifts).values({
+    name: data.name,
+    price: data.price ?? null,
+    url: data.url ?? null,
+    store: data.store ?? null,
+    rating: data.rating ?? null,
+    dateAdded: data.dateAdded,
+    category: data.category,
+    notes: data.notes ?? null,
+    purchased: data.purchased ?? false,
+  }).returning({ id: gifts.id });
+  return rows[0]!.id;
+}
+
+export async function updateGift(
+  db: Database,
+  id: number,
+  updates: Partial<{
+    name: string;
+    price: number | null;
+    url: string | null;
+    store: string | null;
+    rating: number | null;
+    dateAdded: string;
+    category: string;
+    notes: string | null;
+    purchased: boolean;
+  }>,
+) {
+  await db.update(gifts).set(updates).where(eq(gifts.id, id));
+}
+
+export async function deleteGift(db: Database, id: number) {
+  await db.delete(gifts).where(eq(gifts.id, id));
 }

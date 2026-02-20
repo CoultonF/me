@@ -166,6 +166,23 @@ export const claudeCodeDaily = sqliteTable('claude_code_daily', {
   costCents: integer('cost_cents').default(0), // USD cents
 });
 
+// ── Gift wishlist ──
+
+export const gifts = sqliteTable('gifts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  price: real('price'),
+  url: text('url'),
+  store: text('store'),
+  rating: integer('rating'), // 1–5 stars
+  dateAdded: text('date_added').notNull(), // YYYY-MM-DD
+  category: text('category').notNull(), // birthday, christmas, etc.
+  notes: text('notes'),
+  purchased: integer('purchased', { mode: 'boolean' }).default(false),
+}, (table) => [
+  uniqueIndex('gifts_name_category_idx').on(table.name, table.category),
+]);
+
 export const claudeCodeModels = sqliteTable('claude_code_models', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(),
