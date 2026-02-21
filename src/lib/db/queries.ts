@@ -1,6 +1,6 @@
 import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan, gifts } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan, gifts, rehabLog, settings } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -941,4 +941,98 @@ export async function updateGift(
 
 export async function deleteGift(db: Database, id: number) {
   await db.delete(gifts).where(eq(gifts.id, id));
+}
+
+// ── Rehab log queries ──
+
+export async function getRehabLog(db: Database, date: string) {
+  const rows = await db
+    .select({ exerciseId: rehabLog.exerciseId })
+    .from(rehabLog)
+    .where(eq(rehabLog.date, date));
+  return rows.map((r) => r.exerciseId);
+}
+
+export async function getRehabLogRange(db: Database, startDate: string, endDate: string) {
+  return db
+    .select({ date: rehabLog.date, exerciseId: rehabLog.exerciseId })
+    .from(rehabLog)
+    .where(and(gte(rehabLog.date, startDate), lte(rehabLog.date, endDate)))
+    .orderBy(rehabLog.date);
+}
+
+export async function getRehabStats(db: Database, startDate: string, endDate: string) {
+  // Daily counts
+  const dailyCounts = await db
+    .select({
+      date: rehabLog.date,
+      count: count(),
+    })
+    .from(rehabLog)
+    .where(and(gte(rehabLog.date, startDate), lte(rehabLog.date, endDate)))
+    .groupBy(rehabLog.date)
+    .orderBy(rehabLog.date);
+
+  // Streak: consecutive days with at least 1 exercise ending at today or yesterday
+  let currentStreak = 0;
+  const dateSet = new Set(dailyCounts.map((d) => d.date));
+
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (dateSet.has(key)) {
+      currentStreak++;
+    } else if (i === 0) {
+      // Today hasn't been logged yet — check from yesterday
+      continue;
+    } else {
+      break;
+    }
+  }
+
+  return {
+    currentStreak,
+    totalDays: dailyCounts.length,
+    totalExercises: dailyCounts.reduce((s, d) => s + d.count, 0),
+    dailyCounts: dailyCounts.map((d) => ({ date: d.date, count: d.count })),
+  };
+}
+
+export async function toggleRehabExercise(db: Database, date: string, exerciseId: string) {
+  // Check if exists
+  const existing = await db
+    .select({ id: rehabLog.id })
+    .from(rehabLog)
+    .where(and(eq(rehabLog.date, date), eq(rehabLog.exerciseId, exerciseId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.delete(rehabLog).where(eq(rehabLog.id, existing[0]!.id));
+    return false; // unchecked
+  } else {
+    await db.insert(rehabLog).values({ date, exerciseId });
+    return true; // checked
+  }
+}
+
+// ── Injury period (settings) ──
+
+export async function getInjuryPeriod(db: Database) {
+  const rows = await db
+    .select({ key: settings.key, value: settings.value })
+    .from(settings)
+    .where(sql`${settings.key} IN ('injury_start', 'injury_end')`);
+
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  const start = map.get('injury_start');
+  if (!start) return null;
+  return { start, end: map.get('injury_end') ?? null };
+}
+
+export async function setInjuryEnd(db: Database, date: string) {
+  await db
+    .insert(settings)
+    .values({ key: 'injury_end', value: date })
+    .onConflictDoUpdate({ target: settings.key, set: { value: date } });
 }

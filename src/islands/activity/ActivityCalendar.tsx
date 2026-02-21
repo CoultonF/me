@@ -6,6 +6,9 @@ import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth'
 import { localDateStr, utcToLocalDate } from '../shared/dates';
 import { CalendarTooltip } from '../shared/CalendarTooltip';
 import { getWorkoutColor, getWorkoutLabel } from '../training/workoutTypeColors';
+import type { RehabAPIResponse } from '../../lib/types/rehab';
+
+type InjuryPeriodData = RehabAPIResponse['injuryPeriod'];
 
 const MIN_CELL = 10;
 const GAP = 3;
@@ -33,9 +36,10 @@ interface DayData {
   race?: RaceInfo | undefined;
   training?: TrainingInfo | undefined;
   isFuture: boolean;
+  isInjuryPeriod: boolean;
 }
 
-function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[]): DayData[] {
+function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[], injuryPeriod: InjuryPeriodData): DayData[] {
   const now = new Date();
   const today = localDateStr(now);
   const map = new Map<string, DayData>();
@@ -45,7 +49,8 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = localDateStr(d);
-    map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
+    const isInjury = injuryPeriod != null && key >= injuryPeriod.start && (injuryPeriod.end == null || key <= injuryPeriod.end);
+    map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false, isInjuryPeriod: isInjury });
   }
 
   // Extend into future for upcoming training workouts (up to ~6 months)
@@ -59,7 +64,8 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
     for (let d = new Date(tomorrow); d <= endDate; d.setDate(d.getDate() + 1)) {
       const key = localDateStr(d);
       if (!map.has(key)) {
-        map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true });
+        const isInjury = injuryPeriod != null && key >= injuryPeriod.start && (injuryPeriod.end == null || key <= injuryPeriod.end);
+        map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true, isInjuryPeriod: isInjury });
       }
     }
   }
@@ -166,6 +172,7 @@ export default function ActivityCalendar() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [races, setRaces] = useState<RaceWithResult[]>([]);
   const [trainingWorkouts, setTrainingWorkouts] = useState<TrainingWorkout[]>([]);
+  const [injuryPeriod, setInjuryPeriod] = useState<InjuryPeriodData>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -184,10 +191,16 @@ export default function ActivityCalendar() {
       .then((d) => d.workouts)
       .catch(() => [] as TrainingWorkout[]);
 
-    Promise.all([activityPromise, racesPromise, trainingPromise]).then(([w, r, t]) => {
+    const rehabPromise = fetch('/api/health/rehab')
+      .then((r) => r.json() as Promise<RehabAPIResponse>)
+      .then((d) => d.injuryPeriod)
+      .catch(() => null as InjuryPeriodData);
+
+    Promise.all([activityPromise, racesPromise, trainingPromise, rehabPromise]).then(([w, r, t, ip]) => {
       setWorkouts(w);
       setRaces(r);
       setTrainingWorkouts(t);
+      setInjuryPeriod(ip);
       setLoaded(true);
     });
   }, []);
@@ -200,7 +213,7 @@ export default function ActivityCalendar() {
     );
   }
 
-  const data = buildCalendarData(workouts, races, trainingWorkouts);
+  const data = buildCalendarData(workouts, races, trainingWorkouts, injuryPeriod);
   const activeDays = data.filter((d) => d.count > 0 && !d.isFuture).length;
   const pastDays = data.filter((d) => !d.isFuture).length;
 
@@ -217,7 +230,7 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
   if (data.length > 0) {
     const firstDow = new Date(data[0]!.date + 'T12:00:00').getDay();
     for (let i = 0; i < firstDow; i++) {
-      currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
+      currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false, isInjuryPeriod: false });
     }
   }
 
@@ -229,7 +242,7 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
     }
   }
   if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false });
+    while (currentWeek.length < 7) currentWeek.push({ date: '', count: -1, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false, isInjuryPeriod: false });
     weeks.push(currentWeek);
   }
 
@@ -255,6 +268,7 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
 
   const gridW = cols * cellSize + (cols - 1) * GAP;
   const hasTraining = data.some((d) => d.training && d.isFuture);
+  const hasInjury = data.some((d) => d.isInjuryPeriod);
 
   return (
     <div ref={containerRef} className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
@@ -327,8 +341,11 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
                               )}
                             </div>
                           )}
+                          {d.isInjuryPeriod && (
+                            <div className="text-red-400 text-[10px] mt-0.5">Injury period</div>
+                          )}
                           {!d.isFuture && d.count === 0 ? (
-                            !d.race && !d.training && <div className="text-dim mt-0.5">Rest day</div>
+                            !d.race && !d.training && !d.isInjuryPeriod && <div className="text-dim mt-0.5">Rest day</div>
                           ) : !d.isFuture && d.count > 0 ? (
                             <>
                               <div className="text-subtle mt-0.5">
@@ -351,7 +368,7 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
                                 : isFutureWithTraining
                                   ? ''
                                   : getIntensityClass(d)
-                          }`}
+                          } ${d.isInjuryPeriod && d.count >= 0 ? 'ring-1 ring-injury-bg' : ''}`}
                           style={{ width: cellSize, height: cellSize }}
                         />
                         {isFutureWithTraining && <StripedCell size={cellSize} color={trainingColor} />}
@@ -381,6 +398,13 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
           <path d="M8 7.8l.9 1.8 2 .3-1.4 1.4.3 2L8 12.3l-1.8 1 .3-2-1.4-1.4 2-.3z" fill="#EAB308" />
         </svg>
         <span>Race</span>
+        {hasInjury && (
+          <>
+            <span className="ml-1">|</span>
+            <div className="size-3 rounded-sm bg-stroke-soft ring-1 ring-injury-bg" />
+            <span>Injury</span>
+          </>
+        )}
         {hasTraining && (
           <>
             <span className="ml-1">|</span>

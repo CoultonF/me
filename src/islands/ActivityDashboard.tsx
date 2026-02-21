@@ -14,6 +14,7 @@ import DistanceVolume from './running/DistanceVolume';
 import HRAnalysis from './running/HRAnalysis';
 import TargetRaceCountdown from './races/TargetRaceCountdown';
 import TrainingSchedule from './training/TrainingSchedule';
+import RehabChecklist from './rehab/RehabChecklist';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 import { useAuth } from './shared/useAuth';
@@ -188,6 +189,11 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
               <TrainingSchedule data={trainingData} />
             </ErrorBoundary>
           )}
+
+          {/* ── Rehab protocol ── */}
+          <ErrorBoundary fallbackTitle="Rehab protocol failed to load">
+            <RehabChecklist />
+          </ErrorBoundary>
 
           {/* ── Running analytics ── */}
           <ErrorBoundary fallbackTitle="Running summary failed to load">

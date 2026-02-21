@@ -136,13 +136,23 @@ export const trainingPlan = sqliteTable('training_plan', {
   date: text('date').notNull(), // YYYY-MM-DD
   title: text('title').notNull(),
   description: text('description'),
-  workoutType: text('workout_type'), // easy, tempo, interval, long, recovery, race, progression
+  workoutType: text('workout_type'), // easy, tempo, interval, long, recovery, race, progression, cross-train
   distanceKm: real('distance_km'),
   targetPace: text('target_pace'), // e.g. "5:50"
   status: text('status').default('planned'), // planned, completed, skipped
   icalUid: text('ical_uid'),
 }, (table) => [
   uniqueIndex('training_plan_date_uid_idx').on(table.date, table.icalUid),
+]);
+
+// ── Rehab tracking ──
+
+export const rehabLog = sqliteTable('rehab_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  exerciseId: text('exercise_id').notNull(),
+}, (table) => [
+  uniqueIndex('rehab_log_date_exercise_idx').on(table.date, table.exerciseId),
 ]);
 
 // ── Claude Code usage (Analytics API) ──

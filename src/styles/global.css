@@ -51,6 +51,7 @@
   --color-training-long: #8b5cf6;
   --color-training-race: #eab308;
   --color-training-progression: #0ea5e9;
+  --color-training-cross-train: #14b8a6;
   --color-training-planned: #6366f1;
 
   /* ── Running / cycling chart colors ── */
@@ -63,6 +64,12 @@
   --color-running-hr-zone4: #f97316;
   --color-running-hr-zone5: #ef4444;
   --color-running-cycling: #f59e0b;
+
+  /* ── Rehab exercise category colors ── */
+  --color-rehab-strength: #6366f1;
+  --color-rehab-mobility: #14b8a6;
+  --color-rehab-prerun: #f59e0b;
+  --color-injury-bg: #fca5a5;
 
   /* ── Legacy dashboard tokens (used by /dashboard) ── */
   --color-surface: #0f172a;

@@ -6,6 +6,7 @@ export const WORKOUT_TYPES: Record<string, { label: string; color: string }> = {
   long: { label: 'Long Run', color: 'var(--color-training-long)' },
   race: { label: 'Race', color: 'var(--color-training-race)' },
   progression: { label: 'Progression', color: 'var(--color-training-progression)' },
+  'cross-train': { label: 'Cross-Train', color: 'var(--color-training-cross-train)' },
 };
 
 export function getWorkoutColor(type: string | null): string {

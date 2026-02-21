@@ -18,6 +18,9 @@ const DB_NAME = 'coultonf-health';
 const TIDEPOOL_API = 'https://api.tidepool.org';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DRY_RUN = process.argv.includes('--dry-run');
+const SKIP_GLUCOSE = process.argv.includes('--skip-glucose');
+const SKIP_INSULIN = process.argv.includes('--skip-insulin');
+const SKIP_ACTIVITY = process.argv.includes('--skip-activity');
 const CHUNK_DAYS = 5;
 const ROOT = resolve(import.meta.dirname, '..');
 const TMP_SQL = resolve(ROOT, '.backfill-tmp.sql');
@@ -291,9 +294,9 @@ async function main() {
     activityChunks = [];
   }
 
-  const glucoseTotal = await backfillGlucose(session, glucoseChunks);
-  const insulinTotal = await backfillInsulin(session, insulinChunks);
-  const activityResult = await backfillActivity(session, activityChunks);
+  const glucoseTotal = SKIP_GLUCOSE ? 0 : await backfillGlucose(session, glucoseChunks);
+  const insulinTotal = SKIP_INSULIN ? 0 : await backfillInsulin(session, insulinChunks);
+  const activityResult = SKIP_ACTIVITY ? { totalWorkouts: 0, totalSummaries: 0 } : await backfillActivity(session, activityChunks);
 
   console.log(`\n=== Done ===`);
   console.log(`Glucose: ~${glucoseTotal} readings`);
