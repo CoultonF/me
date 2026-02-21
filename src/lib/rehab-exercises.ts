@@ -21,7 +21,7 @@ export const REHAB_EXERCISES: RehabExercise[] = [
   {
     id: 'single-leg-calf-raise', name: 'Single-Leg Calf Raise', category: 'strengthening', sets: '3×15',
     description: 'Slow eccentric (3s down), full ROM on step edge',
-    howTo: 'Stand on one foot on the edge of a step with your heel hanging off. Push up onto your toes, then slowly lower your heel below the step over 3 seconds. Use a wall for balance if needed.',
+    howTo: 'Stand on the edge of a step with both feet. Push up onto your toes with both feet, then lift one foot off and slowly lower down on one leg over 3 seconds. Keep your knee straight, core engaged, and stand tall. Step back on with both feet and push up again.',
     progression: 'Add weight via backpack',
   },
   {
