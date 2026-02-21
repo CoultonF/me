@@ -1,16 +1,15 @@
-import { useState } from 'react';
 import type { RehabExercise } from '../../lib/rehab-exercises';
 
 interface Props {
   exercise: RehabExercise;
   completed: boolean;
   interactive: boolean;
+  showHelp: boolean;
   onToggle: (exerciseId: string) => void;
+  onToggleHelp: () => void;
 }
 
-export default function RehabExerciseRow({ exercise, completed, interactive, onToggle }: Props) {
-  const [showHelp, setShowHelp] = useState(false);
-
+export default function RehabExerciseRow({ exercise, completed, interactive, showHelp, onToggle, onToggleHelp }: Props) {
   return (
     <div>
       <div className="flex items-center">
@@ -51,7 +50,7 @@ export default function RehabExerciseRow({ exercise, completed, interactive, onT
         {/* Help toggle */}
         <button
           type="button"
-          onClick={() => setShowHelp((v) => !v)}
+          onClick={onToggleHelp}
           className={`shrink-0 size-8 flex items-center justify-center rounded-md mr-1 transition-colors hover:bg-panel ${
             showHelp ? 'text-accent' : 'text-ghost'
           }`}
