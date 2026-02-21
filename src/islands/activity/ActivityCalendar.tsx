@@ -49,7 +49,7 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = localDateStr(d);
-    const isInjury = injuryPeriod != null && key >= injuryPeriod.start && (injuryPeriod.end == null || key <= injuryPeriod.end);
+    const isInjury = injuryPeriod != null && key >= injuryPeriod.start && key <= (injuryPeriod.end ?? today);
     map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false, isInjuryPeriod: isInjury });
   }
 
@@ -64,7 +64,7 @@ function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainin
     for (let d = new Date(tomorrow); d <= endDate; d.setDate(d.getDate() + 1)) {
       const key = localDateStr(d);
       if (!map.has(key)) {
-        const isInjury = injuryPeriod != null && key >= injuryPeriod.start && (injuryPeriod.end == null || key <= injuryPeriod.end);
+        const isInjury = injuryPeriod != null && key >= injuryPeriod.start && key <= (injuryPeriod.end ?? today);
         map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: true, isInjuryPeriod: isInjury });
       }
     }

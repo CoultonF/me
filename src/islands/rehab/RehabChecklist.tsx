@@ -107,13 +107,16 @@ export default function RehabChecklist() {
       <div className="flex items-center justify-between">
         <div className="text-xs font-medium text-dim uppercase tracking-wide">Rehab Protocol</div>
         {isAdmin && injuryPeriod && !injuryPeriod.end && (
-          <button
-            onClick={handleEndInjury}
-            disabled={ending}
-            className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-green-500 hover:border-green-500 transition-colors disabled:opacity-50"
-          >
-            {ending ? 'Marking...' : 'Mark Recovered'}
-          </button>
+          <div className="flex items-center gap-2">
+            <RecoveryGuidelines />
+            <button
+              onClick={handleEndInjury}
+              disabled={ending}
+              className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-green-500 hover:border-green-500 transition-colors disabled:opacity-50"
+            >
+              {ending ? 'Marking...' : 'Mark Recovered'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -137,6 +140,39 @@ export default function RehabChecklist() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function RecoveryGuidelines() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`size-7 flex items-center justify-center rounded-md transition-colors hover:bg-panel ${open ? 'text-accent' : 'text-ghost'}`}
+        aria-label="Recovery guidelines"
+      >
+        <svg className="size-4" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M6.5 6.5a1.5 1.5 0 1 1 2.1 1.38c-.42.18-.6.46-.6.87V9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 w-72 bg-tile border border-stroke rounded-lg p-3 shadow-lg text-xs text-subtle leading-relaxed space-y-1.5">
+          <div className="font-medium text-heading text-[11px] uppercase tracking-wide">When to mark recovered</div>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>No pain during or after running for 2+ consecutive weeks</li>
+            <li>Single-leg calf raise pain-free with full range of motion</li>
+            <li>Can hop on the affected foot 10+ times without discomfort</li>
+            <li>No morning stiffness or tenderness along the inner ankle</li>
+          </ul>
+          <p className="text-dim">If pain returns during a run, stop and continue rehab exercises before marking recovered.</p>
+        </div>
+      )}
     </div>
   );
 }
