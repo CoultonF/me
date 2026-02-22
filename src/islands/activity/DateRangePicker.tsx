@@ -1,4 +1,4 @@
-type Range = '7d' | '30d' | '90d';
+type Range = '7d' | '30d' | '90d' | '365d';
 
 interface Props {
   selected: Range;
@@ -9,6 +9,7 @@ const ranges: { value: Range; label: string }[] = [
   { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
   { value: '90d', label: '90d' },
+  { value: '365d', label: '1y' },
 ];
 
 export default function DateRangePicker({ selected, onChange }: Props) {

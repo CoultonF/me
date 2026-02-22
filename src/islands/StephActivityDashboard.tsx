@@ -19,7 +19,7 @@ import DateRangePicker from './activity/DateRangePicker';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
-type Range = '7d' | '30d' | '90d';
+type Range = '7d' | '30d' | '90d' | '365d';
 
 interface Props {
   initialRange?: Range;
@@ -30,7 +30,7 @@ const EMPTY_WORKOUT_STATS = { count: 0, totalDistanceKm: 0, avgHR: 0, totalDurat
 const EMPTY_SLEEP_STATS = { avgTotalMinutes: 0, avgRemMinutes: 0, avgDeepMinutes: 0, avgCoreMinutes: 0, avgAwakeMinutes: 0, nights: 0 };
 const EMPTY_HR_ZONES = { zone1: 0, zone2: 0, zone3: 0, zone4: 0, zone5: 0 };
 
-export default function StephActivityDashboard({ initialRange = '30d' }: Props) {
+export default function StephActivityDashboard({ initialRange = '90d' }: Props) {
   const [range, setRange] = useState<Range>(initialRange);
   const [data, setData] = useState<StephActivityAPIResponse | null>(null);
   const [loading, setLoading] = useState(true);
