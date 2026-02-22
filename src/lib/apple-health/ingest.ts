@@ -77,11 +77,14 @@ function buildWorkoutQueries(db: WifeDatabase, rows: WorkoutPayload[]) {
   );
 }
 
+const RESTING_HR_CAP = 80;
+
 function buildHeartRateDailyQueries(db: WifeDatabase, rows: HeartRateDailyPayload[]) {
-  return rows.map((row) =>
-    db.insert(heartRateDaily).values({
+  return rows.map((row) => {
+    const restingHR = row.restingHR != null && row.restingHR > RESTING_HR_CAP ? null : (row.restingHR ?? null);
+    return db.insert(heartRateDaily).values({
       date: row.date,
-      restingHR: row.restingHR ?? null,
+      restingHR,
       walkingHRAvg: row.walkingHRAvg ?? null,
       hrv: row.hrv ?? null,
       updatedAt: sql`datetime('now')`,
@@ -93,8 +96,8 @@ function buildHeartRateDailyQueries(db: WifeDatabase, rows: HeartRateDailyPayloa
         hrv: sql`excluded.hrv`,
         updatedAt: sql`datetime('now')`,
       },
-    })
-  );
+    });
+  });
 }
 
 function buildVitalQueries(db: WifeDatabase, rows: VitalPayload[]) {
