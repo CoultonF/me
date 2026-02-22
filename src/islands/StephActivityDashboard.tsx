@@ -13,6 +13,7 @@ import StephHRZoneBar from './steph-activity/StephHRZoneBar';
 import StephSleepCharts from './steph-activity/StephSleepCharts';
 import TrainingLoadChart from './steph-activity/TrainingLoadChart';
 import RecoveryReadiness from './steph-activity/RecoveryReadiness';
+import StephActivityCalendar from './steph-activity/StephActivityCalendar';
 import DateRangePicker from './activity/DateRangePicker';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
@@ -122,6 +123,10 @@ export default function StephActivityDashboard({ initialRange = '30d' }: Props) 
 
           <ErrorBoundary fallbackTitle="Summary cards failed to load">
             <StephActivitySummaryCards stats={activityStats} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Activity calendar failed to load">
+            <StephActivityCalendar />
           </ErrorBoundary>
 
           {/* ── Training Load & Injury Risk ── */}
