@@ -77,7 +77,7 @@ function buildWorkoutQueries(db: WifeDatabase, rows: WorkoutPayload[]) {
   );
 }
 
-const RESTING_HR_CAP = 80;
+const RESTING_HR_CAP = 60;
 
 function buildHeartRateDailyQueries(db: WifeDatabase, rows: HeartRateDailyPayload[]) {
   return rows.map((row) => {
