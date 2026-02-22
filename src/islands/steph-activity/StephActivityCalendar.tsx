@@ -63,11 +63,27 @@ function buildCalendarData(
   return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function getIntensityClass(d: DayData): string {
-  if (d.workoutCount === 0) return 'bg-stroke-soft';
-  if (d.totalMinutes < 30) return 'bg-steph-exercise/40';
-  if (d.totalMinutes < 60) return 'bg-steph-exercise/60';
-  return 'bg-steph-exercise/90';
+const TYPE_COLORS: Record<string, string> = {
+  running: '#f59e0b',
+  strength: '#a78bfa',
+  walking: '#22c55e',
+  cycling: '#0ea5e9',
+  other: '#9ca3af',
+};
+
+function getPrimaryType(d: DayData): string {
+  if (d.workoutTypes.length === 1) return d.workoutTypes[0]!;
+  return d.workoutTypes[0] ?? 'other';
+}
+
+function getDayStyle(d: DayData): React.CSSProperties | undefined {
+  if (d.workoutCount === 0) return undefined;
+  const color = TYPE_COLORS[getPrimaryType(d)] ?? TYPE_COLORS.other;
+  const opacity = d.totalMinutes < 20 ? 0.35
+    : d.totalMinutes < 45 ? 0.55
+    : d.totalMinutes < 75 ? 0.75
+    : 0.95;
+  return { backgroundColor: color, opacity };
 }
 
 function formatDateLabel(date: string): string {
@@ -227,9 +243,9 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
                   >
                     <div
                       className={`rounded-sm ${
-                        d.workoutCount < 0 ? 'bg-transparent' : getIntensityClass(d)
+                        d.workoutCount < 0 ? 'bg-transparent' : d.workoutCount === 0 ? 'bg-stroke-soft' : ''
                       }`}
-                      style={{ width: cellSize, height: cellSize }}
+                      style={{ width: cellSize, height: cellSize, ...getDayStyle(d) }}
                     />
                   </CalendarTooltip>
                 ))
@@ -240,13 +256,18 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-end gap-2 mt-3 text-[10px] text-dim">
-        <span>Rest</span>
-        <div className="size-3 rounded-sm bg-stroke-soft" />
-        <div className="size-3 rounded-sm bg-steph-exercise/40" />
-        <div className="size-3 rounded-sm bg-steph-exercise/60" />
-        <div className="size-3 rounded-sm bg-steph-exercise/90" />
-        <span>60+ min</span>
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 mt-3 text-[10px] text-dim">
+        <div className="flex items-center gap-1">
+          <div className="size-3 rounded-sm bg-stroke-soft" />
+          <span>Rest</span>
+        </div>
+        {Object.entries(TYPE_COLORS).filter(([k]) => k !== 'other').map(([type, color]) => (
+          <div key={type} className="flex items-center gap-1">
+            <div className="size-3 rounded-sm" style={{ backgroundColor: color }} />
+            <span className="capitalize">{type}</span>
+          </div>
+        ))}
+        <span className="ml-1">Shade = duration</span>
       </div>
     </div>
   );
