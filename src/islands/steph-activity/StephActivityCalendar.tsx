@@ -83,7 +83,7 @@ export default function StephActivityCalendar() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch('/private/api/steph-activity?range=90d')
+    fetch('/private/api/steph-activity?range=365d')
       .then((r) => r.json() as Promise<StephActivityAPIResponse>)
       .then((d) => {
         setWorkouts(d.workouts);
