@@ -39,7 +39,7 @@ export default function StephWorkoutList({ workouts }: Props) {
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Recent Workouts</div>
       <div className="space-y-3">
-        {workouts.slice(0, 15).map((w, i) => (
+        {workouts.slice(0, 5).map((w, i) => (
           <div key={i} className="border border-stroke rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-heading">{formatType(w.workoutType)}</div>
