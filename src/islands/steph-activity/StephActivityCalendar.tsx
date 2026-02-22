@@ -71,17 +71,18 @@ const TYPE_COLORS: Record<string, string> = {
   other: '#9ca3af',
 };
 
-function getDayStyle(d: DayData): React.CSSProperties | undefined {
+function getDayStyle(d: DayData, hiddenTypes: Set<string>): React.CSSProperties | undefined {
   if (d.workoutCount === 0) return undefined;
+  const visibleTypes = d.workoutTypes.filter((t) => !hiddenTypes.has(t));
+  if (visibleTypes.length === 0) return undefined;
   const opacity = d.totalMinutes < 20 ? 0.35
     : d.totalMinutes < 45 ? 0.55
     : d.totalMinutes < 75 ? 0.75
     : 0.95;
-  const colors = d.workoutTypes.map((t) => TYPE_COLORS[t] ?? TYPE_COLORS.other);
+  const colors = visibleTypes.map((t) => TYPE_COLORS[t] ?? TYPE_COLORS.other);
   if (colors.length <= 1) {
     return { backgroundColor: colors[0] ?? TYPE_COLORS.other, opacity };
   }
-  // Diagonal gradient for multi-type days
   const stops = colors.map((c, i) => {
     const start = (i / colors.length) * 100;
     const end = ((i + 1) / colors.length) * 100;
@@ -128,6 +129,16 @@ export default function StephActivityCalendar() {
 
 function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays: number; pastDays: number }) {
   const [containerRef, containerWidth] = useContainerWidth();
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
+
+  const toggleType = (type: string) => {
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  };
 
   const weeks: DayData[][] = [];
   let currentWeek: DayData[] = [];
@@ -249,7 +260,7 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
                       className={`rounded-sm ${
                         d.workoutCount < 0 ? 'bg-transparent' : d.workoutCount === 0 ? 'bg-stroke-soft' : ''
                       }`}
-                      style={{ width: cellSize, height: cellSize, ...getDayStyle(d) }}
+                      style={{ width: cellSize, height: cellSize, ...getDayStyle(d, hiddenTypes) }}
                     />
                   </CalendarTooltip>
                 ))
@@ -266,10 +277,14 @@ function GridView({ data, activeDays, pastDays }: { data: DayData[]; activeDays:
           <span>Rest</span>
         </div>
         {Object.entries(TYPE_COLORS).filter(([k]) => k !== 'other').map(([type, color]) => (
-          <div key={type} className="flex items-center gap-1">
+          <button
+            key={type}
+            onClick={() => toggleType(type)}
+            className={`flex items-center gap-1 transition-opacity ${hiddenTypes.has(type) ? 'opacity-30' : ''}`}
+          >
             <div className="size-3 rounded-sm" style={{ backgroundColor: color }} />
             <span className="capitalize">{type}</span>
-          </div>
+          </button>
         ))}
         <span className="ml-1">Shade = duration</span>
       </div>
