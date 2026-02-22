@@ -24,10 +24,18 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    // Parse JSON body
+    // Parse JSON body (decompress if Content-Encoding: deflate)
     let raw: unknown;
     try {
-      raw = await request.json();
+      const encoding = request.headers.get('content-encoding');
+      if (encoding === 'deflate') {
+        const ds = new DecompressionStream('deflate');
+        const decompressed = request.body!.pipeThrough(ds);
+        const text = await new Response(decompressed).text();
+        raw = JSON.parse(text);
+      } else {
+        raw = await request.json();
+      }
     } catch {
       return jsonResponse({ error: 'Invalid JSON body' }, 400);
     }
