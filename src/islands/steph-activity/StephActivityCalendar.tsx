@@ -25,16 +25,20 @@ function formatType(type: string): string {
 
 function getDateRange(range: string): { start: Date; end: Date } {
   const now = new Date();
+  const currentYear = now.getFullYear();
+
   if (/^\d{4}$/.test(range)) {
     const year = parseInt(range);
+    // Past years: show full Jan 1 – Dec 31
+    // Current year: show Jan 1 – today
     const start = new Date(year, 0, 1);
-    const end = new Date(year, 11, 31) < now ? new Date(year, 11, 31) : now;
+    const end = year < currentYear ? new Date(year, 11, 31) : now;
     return { start, end };
   }
-  const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 };
-  const days = daysMap[range] ?? 365;
+
+  // Duration ranges: always show at least 365 days
   const start = new Date(now);
-  start.setDate(start.getDate() - (days - 1));
+  start.setDate(start.getDate() - 364);
   return { start, end: now };
 }
 
