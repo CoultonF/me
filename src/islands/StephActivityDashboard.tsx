@@ -121,7 +121,7 @@ export default function StephActivityDashboard({ initialRange = '90d' }: Props) 
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Activity calendar failed to load">
-            <StephActivityCalendar />
+            <StephActivityCalendar workouts={data?.workouts ?? []} range={range} />
           </ErrorBoundary>
 
           {/* ── Training Load & Injury Risk ── */}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import type { StephActivityAPIResponse, StephWorkout } from '../../lib/types/steph-activity';
+import { useState } from 'react';
+import type { StephWorkout } from '../../lib/types/steph-activity';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 import { localDateStr, utcToLocalDate } from '../shared/dates';
 import { CalendarTooltip } from '../shared/CalendarTooltip';
@@ -23,16 +23,29 @@ function formatType(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function getDateRange(range: string): { start: Date; end: Date } {
+  const now = new Date();
+  if (/^\d{4}$/.test(range)) {
+    const year = parseInt(range);
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31) < now ? new Date(year, 11, 31) : now;
+    return { start, end };
+  }
+  const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 };
+  const days = daysMap[range] ?? 365;
+  const start = new Date(now);
+  start.setDate(start.getDate() - (days - 1));
+  return { start, end: now };
+}
+
 function buildCalendarData(
   workouts: StephWorkout[],
+  range: string,
 ): DayData[] {
-  const now = new Date();
+  const { start, end } = getDateRange(range);
   const map = new Map<string, DayData>();
 
-  // Past 364 days + today
-  for (let i = 364; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const key = localDateStr(d);
     map.set(key, {
       date: key,
@@ -99,29 +112,13 @@ function formatDateLabel(date: string): string {
   });
 }
 
-export default function StephActivityCalendar() {
-  const [workouts, setWorkouts] = useState<StephWorkout[]>([]);
-  const [loaded, setLoaded] = useState(false);
+interface CalendarProps {
+  workouts: StephWorkout[];
+  range: string;
+}
 
-  useEffect(() => {
-    fetch('/private/api/steph-activity?range=365d')
-      .then((r) => r.json() as Promise<StephActivityAPIResponse>)
-      .then((d) => {
-        setWorkouts(d.workouts);
-        setLoaded(true);
-      })
-      .catch(() => setLoaded(true));
-  }, []);
-
-  if (!loaded) {
-    return (
-      <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs text-dim">Loading activity calendar...</div>
-      </div>
-    );
-  }
-
-  const data = buildCalendarData(workouts);
+export default function StephActivityCalendar({ workouts, range }: CalendarProps) {
+  const data = buildCalendarData(workouts, range);
   const activeDays = data.filter((d) => d.workoutCount > 0).length;
 
   return <GridView data={data} activeDays={activeDays} pastDays={data.length} />;
