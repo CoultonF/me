@@ -16,12 +16,16 @@ import type {
 } from '../types/steph-activity';
 
 export async function getStephDailyActivity(db: WifeDatabase, start: string, end: string): Promise<StephActivityDay[]> {
+  // exercise_minutes is NULL in daily_activity — compute from workouts table
   const rows = await db
     .select({
       date: dailyActivity.date,
       steps: dailyActivity.steps,
       activeCalories: dailyActivity.activeCalories,
-      exerciseMinutes: dailyActivity.exerciseMinutes,
+      exerciseMinutes: sql<number | null>`coalesce(
+        ${dailyActivity.exerciseMinutes},
+        (SELECT cast(round(sum(w.duration_seconds) / 60.0) as integer) FROM workouts w WHERE date(w.start_time) = ${dailyActivity.date})
+      )`,
       standHours: dailyActivity.standHours,
       walkDistanceKm: dailyActivity.walkDistanceKm,
       cycleDistanceKm: dailyActivity.cycleDistanceKm,
@@ -99,7 +103,11 @@ export async function getStephActivityStats(db: WifeDatabase, start: string, end
   const [agg] = await db
     .select({
       totalCalories: sql<number>`coalesce(sum(${dailyActivity.activeCalories}), 0)`,
-      totalExercise: sql<number>`coalesce(sum(${dailyActivity.exerciseMinutes}), 0)`,
+      totalExercise: sql<number>`coalesce(sum(
+        coalesce(${dailyActivity.exerciseMinutes},
+          (SELECT cast(round(sum(w.duration_seconds) / 60.0) as integer) FROM workouts w WHERE date(w.start_time) = ${dailyActivity.date})
+        )
+      ), 0)`,
       totalSteps: sql<number>`coalesce(sum(${dailyActivity.steps}), 0)`,
       days: count(),
     })
