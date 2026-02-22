@@ -11,6 +11,7 @@ import StephWorkoutList from './steph-activity/StephWorkoutList';
 import StephHRTrends from './steph-activity/StephHRTrends';
 import StephHRZoneBar from './steph-activity/StephHRZoneBar';
 import StephSleepCharts from './steph-activity/StephSleepCharts';
+import StephSleepInsights from './steph-activity/StephSleepInsights';
 import TrainingLoadChart from './steph-activity/TrainingLoadChart';
 import RecoveryReadiness from './steph-activity/RecoveryReadiness';
 import StephActivityCalendar from './steph-activity/StephActivityCalendar';
@@ -185,6 +186,13 @@ export default function StephActivityDashboard({ initialRange = '30d' }: Props) 
 
           <ErrorBoundary fallbackTitle="Sleep charts failed to load">
             <StephSleepCharts sleep={data?.sleep ?? []} sleepStats={sleepStats} />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Sleep insights failed to load">
+            <StephSleepInsights
+              sleep={data?.sleep ?? []}
+              workouts={data?.trainingLoadWorkouts ?? []}
+            />
           </ErrorBoundary>
         </>
       )}
