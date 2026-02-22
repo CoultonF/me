@@ -29,7 +29,7 @@ export const POST: APIRoute = async ({ request }) => {
     try {
       const encoding = request.headers.get('content-encoding');
       if (encoding === 'deflate') {
-        const ds = new DecompressionStream('deflate');
+        const ds = new DecompressionStream('deflate-raw');
         const decompressed = request.body!.pipeThrough(ds);
         const text = await new Response(decompressed).text();
         raw = JSON.parse(text);
