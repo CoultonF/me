@@ -71,19 +71,23 @@ const TYPE_COLORS: Record<string, string> = {
   other: '#9ca3af',
 };
 
-function getPrimaryType(d: DayData): string {
-  if (d.workoutTypes.length === 1) return d.workoutTypes[0]!;
-  return d.workoutTypes[0] ?? 'other';
-}
-
 function getDayStyle(d: DayData): React.CSSProperties | undefined {
   if (d.workoutCount === 0) return undefined;
-  const color = TYPE_COLORS[getPrimaryType(d)] ?? TYPE_COLORS.other;
   const opacity = d.totalMinutes < 20 ? 0.35
     : d.totalMinutes < 45 ? 0.55
     : d.totalMinutes < 75 ? 0.75
     : 0.95;
-  return { backgroundColor: color, opacity };
+  const colors = d.workoutTypes.map((t) => TYPE_COLORS[t] ?? TYPE_COLORS.other);
+  if (colors.length <= 1) {
+    return { backgroundColor: colors[0] ?? TYPE_COLORS.other, opacity };
+  }
+  // Diagonal gradient for multi-type days
+  const stops = colors.map((c, i) => {
+    const start = (i / colors.length) * 100;
+    const end = ((i + 1) / colors.length) * 100;
+    return `${c} ${start}%, ${c} ${end}%`;
+  }).join(', ');
+  return { background: `linear-gradient(135deg, ${stops})`, opacity };
 }
 
 function formatDateLabel(date: string): string {
