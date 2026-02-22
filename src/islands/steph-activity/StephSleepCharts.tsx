@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -8,6 +9,7 @@ import {
   Legend,
 } from 'recharts';
 import type { StephSleepSession, StephSleepStats } from '../../lib/types/steph-activity';
+import { smoothToWeekly } from '../shared/smoothData';
 
 interface Props {
   sleep: StephSleepSession[];
@@ -42,7 +44,18 @@ function SleepTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 export default function StephSleepCharts({ sleep, sleepStats }: Props) {
   const sleepWithStages = sleep.filter((s) => s.totalMinutes != null);
 
-  if (sleepWithStages.length === 0) {
+  const { data: smoothedSleep, smoothed } = useMemo(
+    () => smoothToWeekly(sleepWithStages, [
+      { key: 'deepMinutes', mode: 'avg' },
+      { key: 'coreMinutes', mode: 'avg' },
+      { key: 'remMinutes', mode: 'avg' },
+      { key: 'awakeMinutes', mode: 'avg' },
+      { key: 'totalMinutes', mode: 'avg' },
+    ]),
+    [sleepWithStages],
+  );
+
+  if (smoothedSleep.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">No sleep data available</div>
@@ -50,7 +63,7 @@ export default function StephSleepCharts({ sleep, sleepStats }: Props) {
     );
   }
 
-  const stageData = sleepWithStages.map((s) => ({
+  const stageData = smoothedSleep.map((s) => ({
     date: s.date,
     deep: s.deepMinutes ?? 0,
     core: s.coreMinutes ?? 0,
@@ -83,7 +96,9 @@ export default function StephSleepCharts({ sleep, sleepStats }: Props) {
 
       {/* Stacked bar chart */}
       <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Sleep Stages</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">
+          Sleep Stages{smoothed && ' (weekly avg)'}
+        </div>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={stageData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
             <XAxis

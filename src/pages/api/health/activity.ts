@@ -62,11 +62,19 @@ export const GET: APIRoute = async ({ url }) => {
     const db = createDb(cfEnv.DB);
 
     const range = url.searchParams.get('range') ?? '7d';
-    const ms = RANGE_MS[range] ?? RANGE_MS['7d']!;
-
     const now = new Date();
-    const startDate = new Date(now.getTime() - ms).toISOString();
-    const endDate = now.toISOString();
+    let startDate: string;
+    let endDate: string;
+
+    if (/^\d{4}$/.test(range)) {
+      startDate = `${range}-01-01`;
+      const yearEnd = `${parseInt(range) + 1}-01-01`;
+      endDate = yearEnd < now.toISOString().slice(0, 10) ? `${range}-12-31` : now.toISOString().slice(0, 10);
+    } else {
+      const ms = RANGE_MS[range] ?? RANGE_MS['7d']!;
+      startDate = new Date(now.getTime() - ms).toISOString();
+      endDate = now.toISOString();
+    }
 
     const [workouts, dailySummaries, activityStats, runningStats, weeklyDistances, paceHistoryRaw, paceHRCorrelationRaw] = await Promise.all([
       getWorkouts(db, startDate, endDate),

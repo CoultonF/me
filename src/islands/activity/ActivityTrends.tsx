@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { ActivityDay } from '../../lib/types/activity';
+import { smoothToWeekly } from '../shared/smoothData';
 
 interface Props {
   dailySummaries: ActivityDay[];
@@ -32,7 +34,15 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
 }
 
 export default function ActivityTrends({ dailySummaries }: Props) {
-  if (dailySummaries.length === 0) {
+  const { data: smoothedData, smoothed } = useMemo(
+    () => smoothToWeekly(dailySummaries, [
+      { key: 'activeCalories', mode: 'avg' },
+      { key: 'exerciseMinutes', mode: 'avg' },
+    ]),
+    [dailySummaries],
+  );
+
+  if (smoothedData.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">No activity trends for this period</div>
@@ -40,7 +50,7 @@ export default function ActivityTrends({ dailySummaries }: Props) {
     );
   }
 
-  const data = dailySummaries.map((d) => ({
+  const data = smoothedData.map((d) => ({
     ...d,
     dateLabel: formatDate(d.date),
     calories: d.activeCalories ?? 0,
@@ -49,7 +59,9 @@ export default function ActivityTrends({ dailySummaries }: Props) {
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-      <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Activity Trends</div>
+      <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">
+        Activity Trends{smoothed && ' (weekly avg)'}
+      </div>
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={data} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
           <XAxis

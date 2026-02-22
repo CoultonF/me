@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -8,6 +9,7 @@ import {
   Legend,
 } from 'recharts';
 import type { StephActivityDay } from '../../lib/types/steph-activity';
+import { smoothToWeekly } from '../shared/smoothData';
 
 interface Props {
   dailyActivity: StephActivityDay[];
@@ -30,7 +32,15 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 }
 
 export default function StephActivityTrends({ dailyActivity }: Props) {
-  if (dailyActivity.length === 0) {
+  const { data: chartData, smoothed } = useMemo(
+    () => smoothToWeekly(dailyActivity, [
+      { key: 'activeCalories', mode: 'avg' },
+      { key: 'exerciseMinutes', mode: 'avg' },
+    ]),
+    [dailyActivity],
+  );
+
+  if (chartData.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">No activity trend data</div>
@@ -40,9 +50,11 @@ export default function StephActivityTrends({ dailyActivity }: Props) {
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-      <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Activity Trends</div>
+      <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">
+        Activity Trends{smoothed && ' (weekly avg)'}
+      </div>
       <ResponsiveContainer width="100%" height={250}>
-        <LineChart data={dailyActivity} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
+        <LineChart data={chartData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}

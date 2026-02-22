@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { StephHeartRateDay, StephSleepSession } from '../../lib/types/steph-activity';
+import { smoothToWeekly } from '../shared/smoothData';
 
 interface Props {
   heartRate: StephHeartRateDay[];
@@ -113,7 +114,17 @@ export default function RecoveryReadiness({ heartRate, sleep }: Props) {
     return result;
   }, [heartRate, sleep]);
 
-  if (recoveryData.length < 7) {
+  const { data: chartData, smoothed } = useMemo(
+    () => smoothToWeekly(recoveryData, [
+      { key: 'score', mode: 'avg' },
+      { key: 'rhrScore', mode: 'avg' },
+      { key: 'hrvScore', mode: 'avg' },
+      { key: 'sleepScore', mode: 'avg' },
+    ]),
+    [recoveryData],
+  );
+
+  if (chartData.length < 7) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">Not enough data for recovery readiness (need 7+ days)</div>
@@ -126,7 +137,9 @@ export default function RecoveryReadiness({ heartRate, sleep }: Props) {
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide">Recovery Readiness</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide">
+          Recovery Readiness{smoothed && ' (weekly avg)'}
+        </div>
         <div className="flex items-center gap-2">
           <div
             className="text-2xl font-bold"
@@ -147,7 +160,7 @@ export default function RecoveryReadiness({ heartRate, sleep }: Props) {
       </div>
 
       <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={recoveryData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
+        <LineChart data={chartData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}

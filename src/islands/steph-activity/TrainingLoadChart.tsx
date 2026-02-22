@@ -62,6 +62,40 @@ function LoadTooltip({ active, payload }: { active?: boolean; payload?: { payloa
   );
 }
 
+const SMOOTH_THRESHOLD = 90;
+
+function smoothLoadToWeekly(data: LoadDay[]): { data: LoadDay[]; smoothed: boolean } {
+  if (data.length <= SMOOTH_THRESHOLD) return { data, smoothed: false };
+
+  const weekMap = new Map<string, LoadDay[]>();
+  for (const item of data) {
+    const d = new Date(item.date + 'T12:00:00');
+    const day = d.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayOffset);
+    const weekKey = monday.toISOString().slice(0, 10);
+    const group = weekMap.get(weekKey);
+    if (group) group.push(item);
+    else weekMap.set(weekKey, [item]);
+  }
+
+  const result: LoadDay[] = [];
+  for (const [weekDate, items] of weekMap) {
+    const last = items[items.length - 1]!;
+    const totalLoad = items.reduce((sum, i) => sum + i.dailyLoad, 0);
+    result.push({
+      date: weekDate,
+      dailyLoad: totalLoad,
+      acuteLoad: last.acuteLoad,
+      chronicLoad: last.chronicLoad,
+      acwr: last.acwr,
+    });
+  }
+
+  return { data: result.sort((a, b) => a.date.localeCompare(b.date)), smoothed: true };
+}
+
 export default function TrainingLoadChart({ trainingLoadActivity }: Props) {
   const loadData = useMemo(() => {
     if (trainingLoadActivity.length === 0) return [];
@@ -111,7 +145,12 @@ export default function TrainingLoadChart({ trainingLoadActivity }: Props) {
     return result;
   }, [trainingLoadActivity]);
 
-  if (loadData.length === 0) {
+  const { data: chartLoadData, smoothed } = useMemo(
+    () => smoothLoadToWeekly(loadData),
+    [loadData],
+  );
+
+  if (chartLoadData.length === 0) {
     return (
       <div className="bg-tile border border-stroke rounded-lg p-8 text-center">
         <div className="text-dim">No training load data available</div>
@@ -119,13 +158,15 @@ export default function TrainingLoadChart({ trainingLoadActivity }: Props) {
     );
   }
 
-  // Current ACWR for the badge
+  // Current ACWR for the badge (from unsmoothed data for accuracy)
   const latestACWR = loadData[loadData.length - 1]?.acwr ?? null;
 
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide">Training Load</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide">
+          Training Load{smoothed && ' (weekly)'}
+        </div>
         {latestACWR != null && (
           <div
             className="text-xs font-medium px-2 py-1 rounded-full"
@@ -140,7 +181,7 @@ export default function TrainingLoadChart({ trainingLoadActivity }: Props) {
       </div>
 
       <ResponsiveContainer width="100%" height={280}>
-        <ComposedChart data={loadData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
+        <ComposedChart data={chartLoadData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}

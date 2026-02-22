@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ActivityAPIResponse } from '../lib/types/activity';
 import type { TrainingAPIResponse } from '../lib/types/training';
+import type { RaceWithResult, RacesAPIResponse } from '../lib/types/races';
+import type { RehabAPIResponse } from '../lib/types/rehab';
 import ActivityRings from './activity/ActivityRings';
 import WeeklyActivityChart from './activity/WeeklyActivityChart';
 import ActivityTrends from './activity/ActivityTrends';
@@ -75,11 +77,22 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
     fetchData(range);
   }, [range, fetchData]);
 
-  // One-time fetch for training plan data (independent of activity range)
+  // One-time fetches for data independent of activity range
+  const [races, setRaces] = useState<RaceWithResult[]>([]);
+  const [injuryPeriod, setInjuryPeriod] = useState<RehabAPIResponse['injuryPeriod']>(null);
+
   useEffect(() => {
     fetch('/api/health/training?range=all')
       .then((r) => r.ok ? r.json() as Promise<TrainingAPIResponse> : null)
       .then((d) => { if (d) setTrainingData(d); })
+      .catch(() => {});
+    fetch('/api/health/races')
+      .then((r) => r.ok ? r.json() as Promise<RacesAPIResponse> : null)
+      .then((d) => { if (d) setRaces([...d.completed, ...d.upcoming]); })
+      .catch(() => {});
+    fetch('/api/health/rehab')
+      .then((r) => r.ok ? r.json() as Promise<RehabAPIResponse> : null)
+      .then((d) => { if (d) setInjuryPeriod(d.injuryPeriod); })
       .catch(() => {});
   }, []);
 
@@ -127,19 +140,21 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-heading">Activity</h2>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
-            >
-              {syncing ? 'Syncing...' : 'Sync'}
-            </button>
-          )}
-          <DateRangePicker selected={range} onChange={setRange} />
+      <div className="sticky top-0 z-20 bg-page py-3 -mt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-heading">Activity</h2>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="text-xs font-medium text-subtle border border-stroke rounded-md px-3 py-1.5 hover:text-accent hover:border-accent transition-colors disabled:opacity-50"
+              >
+                {syncing ? 'Syncing...' : 'Sync'}
+              </button>
+            )}
+            <DateRangePicker selected={range} onChange={setRange} />
+          </div>
         </div>
       </div>
 
@@ -167,7 +182,13 @@ export default function ActivityDashboard({ initialRange = '7d' }: Props) {
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Activity calendar failed to load">
-            <ActivityCalendar />
+            <ActivityCalendar
+              workouts={data?.workouts ?? []}
+              range={range}
+              races={races}
+              trainingWorkouts={trainingData?.workouts}
+              injuryPeriod={injuryPeriod}
+            />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Activity trends failed to load">

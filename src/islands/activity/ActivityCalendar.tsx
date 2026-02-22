@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import type { Workout, ActivityAPIResponse } from '../../lib/types/activity';
-import type { RacesAPIResponse, RaceWithResult } from '../../lib/types/races';
-import type { TrainingWorkout, TrainingAPIResponse } from '../../lib/types/training';
+import type { Workout } from '../../lib/types/activity';
+import type { RaceWithResult } from '../../lib/types/races';
+import type { TrainingWorkout } from '../../lib/types/training';
 import { useContainerWidth, computeCellSize } from '../shared/useContainerWidth';
 import { localDateStr, utcToLocalDate } from '../shared/dates';
 import { CalendarTooltip } from '../shared/CalendarTooltip';
@@ -39,15 +38,30 @@ interface DayData {
   isInjuryPeriod: boolean;
 }
 
-function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[], injuryPeriod: InjuryPeriodData): DayData[] {
+function getDateRange(range: string): { start: Date; end: Date } {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  if (/^\d{4}$/.test(range)) {
+    const year = parseInt(range);
+    const start = new Date(year, 0, 1);
+    const end = year < currentYear ? new Date(year, 11, 31) : now;
+    return { start, end };
+  }
+
+  // Duration ranges: always show at least 365 days
+  const start = new Date(now);
+  start.setDate(start.getDate() - 364);
+  return { start, end: now };
+}
+
+function buildCalendarData(workouts: Workout[], races: RaceWithResult[], trainingWorkouts: TrainingWorkout[], injuryPeriod: InjuryPeriodData, range: string): DayData[] {
   const now = new Date();
   const today = localDateStr(now);
+  const { start, end } = getDateRange(range);
   const map = new Map<string, DayData>();
 
-  // Past 364 days + today
-  for (let i = 364; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const key = localDateStr(d);
     const isInjury = injuryPeriod != null && key >= injuryPeriod.start && key <= (injuryPeriod.end ?? today);
     map.set(key, { date: key, count: 0, totalMinutes: 0, totalDistanceKm: 0, names: [], isFuture: false, isInjuryPeriod: isInjury });
@@ -168,52 +182,16 @@ function StripedCell({ size, color }: { size: number; color: string }) {
   );
 }
 
-export default function ActivityCalendar() {
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [races, setRaces] = useState<RaceWithResult[]>([]);
-  const [trainingWorkouts, setTrainingWorkouts] = useState<TrainingWorkout[]>([]);
-  const [injuryPeriod, setInjuryPeriod] = useState<InjuryPeriodData>(null);
-  const [loaded, setLoaded] = useState(false);
+interface CalendarProps {
+  workouts: Workout[];
+  range: string;
+  races?: RaceWithResult[] | undefined;
+  trainingWorkouts?: TrainingWorkout[] | undefined;
+  injuryPeriod?: InjuryPeriodData | undefined;
+}
 
-  useEffect(() => {
-    const activityPromise = fetch('/api/health/activity?range=365d')
-      .then((r) => r.json() as Promise<ActivityAPIResponse>)
-      .then((d) => d.workouts)
-      .catch(() => [] as Workout[]);
-
-    const racesPromise = fetch('/api/health/races')
-      .then((r) => r.json() as Promise<RacesAPIResponse>)
-      .then((d) => [...d.completed, ...d.upcoming])
-      .catch(() => [] as RaceWithResult[]);
-
-    const trainingPromise = fetch('/api/health/training?range=all')
-      .then((r) => r.json() as Promise<TrainingAPIResponse>)
-      .then((d) => d.workouts)
-      .catch(() => [] as TrainingWorkout[]);
-
-    const rehabPromise = fetch('/api/health/rehab')
-      .then((r) => r.json() as Promise<RehabAPIResponse>)
-      .then((d) => d.injuryPeriod)
-      .catch(() => null as InjuryPeriodData);
-
-    Promise.all([activityPromise, racesPromise, trainingPromise, rehabPromise]).then(([w, r, t, ip]) => {
-      setWorkouts(w);
-      setRaces(r);
-      setTrainingWorkouts(t);
-      setInjuryPeriod(ip);
-      setLoaded(true);
-    });
-  }, []);
-
-  if (!loaded) {
-    return (
-      <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs text-dim">Loading activity calendar...</div>
-      </div>
-    );
-  }
-
-  const data = buildCalendarData(workouts, races, trainingWorkouts, injuryPeriod);
+export default function ActivityCalendar({ workouts, range, races = [], trainingWorkouts = [], injuryPeriod = null }: CalendarProps) {
+  const data = buildCalendarData(workouts, races, trainingWorkouts, injuryPeriod, range);
   const activeDays = data.filter((d) => d.count > 0 && !d.isFuture).length;
   const pastDays = data.filter((d) => !d.isFuture).length;
 

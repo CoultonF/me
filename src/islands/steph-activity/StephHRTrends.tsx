@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -7,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { StephHeartRateDay } from '../../lib/types/steph-activity';
+import { smoothToWeekly } from '../shared/smoothData';
 
 interface Props {
   heartRate: StephHeartRateDay[];
@@ -42,8 +44,17 @@ function HRVTooltip({ active, payload }: { active?: boolean; payload?: { payload
 }
 
 export default function StephHRTrends({ heartRate }: Props) {
-  const rhrData = heartRate.filter((d) => d.restingHR != null);
-  const hrvData = heartRate.filter((d) => d.hrv != null);
+  const { data: smoothedHR, smoothed } = useMemo(
+    () => smoothToWeekly(heartRate, [
+      { key: 'restingHR', mode: 'avg' },
+      { key: 'walkingHRAvg', mode: 'avg' },
+      { key: 'hrv', mode: 'avg' },
+    ]),
+    [heartRate],
+  );
+
+  const rhrData = smoothedHR.filter((d) => d.restingHR != null);
+  const hrvData = smoothedHR.filter((d) => d.hrv != null);
 
   if (rhrData.length === 0 && hrvData.length === 0) {
     return (
@@ -56,7 +67,9 @@ export default function StephHRTrends({ heartRate }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Resting Heart Rate</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">
+          Resting Heart Rate{smoothed && ' (weekly avg)'}
+        </div>
         {rhrData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={rhrData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
@@ -91,7 +104,9 @@ export default function StephHRTrends({ heartRate }: Props) {
       </div>
 
       <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">Heart Rate Variability</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide mb-4">
+          Heart Rate Variability{smoothed && ' (weekly avg)'}
+        </div>
         {hrvData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={hrvData} margin={{ top: 5, right: 0, left: 5, bottom: 0 }}>
