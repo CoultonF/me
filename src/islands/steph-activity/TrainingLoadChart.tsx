@@ -125,7 +125,7 @@ export default function TrainingLoadChart({ trainingLoadActivity }: Props) {
   return (
     <div className="bg-tile border border-stroke rounded-lg p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-xs font-medium text-dim uppercase tracking-wide">Training Load (90 Days)</div>
+        <div className="text-xs font-medium text-dim uppercase tracking-wide">Training Load</div>
         {latestACWR != null && (
           <div
             className="text-xs font-medium px-2 py-1 rounded-full"

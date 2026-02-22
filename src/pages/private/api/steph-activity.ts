@@ -66,9 +66,6 @@ export const GET: APIRoute = async ({ url }) => {
       endDate = now.toISOString().slice(0, 10);
     }
 
-    // Always fetch 90 days for training load computation
-    const trainingLoadStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
     const [
       dailyActivity,
       workoutsData,
@@ -80,8 +77,6 @@ export const GET: APIRoute = async ({ url }) => {
       sleepStats,
       weeklyWorkoutVolume,
       workoutTypeBreakdown,
-      trainingLoadActivity,
-      trainingLoadWorkouts,
     ] = await Promise.all([
       getStephDailyActivity(db, startDate, endDate),
       getStephWorkouts(db, startDate, endDate + 'T23:59:59'),
@@ -93,8 +88,6 @@ export const GET: APIRoute = async ({ url }) => {
       getStephSleepStats(db, startDate, endDate),
       getStephWeeklyWorkoutVolume(db, startDate, endDate + 'T23:59:59'),
       getStephWorkoutTypeBreakdown(db, startDate, endDate + 'T23:59:59'),
-      getStephDailyActivity(db, trainingLoadStart, endDate),
-      getStephWorkouts(db, trainingLoadStart, endDate + 'T23:59:59'),
     ]);
 
     const hrZones = computeStephHRZones(workoutsData);
@@ -111,8 +104,8 @@ export const GET: APIRoute = async ({ url }) => {
       hrZones,
       workoutTypeBreakdown,
       weeklyWorkoutVolume,
-      trainingLoadActivity,
-      trainingLoadWorkouts,
+      trainingLoadActivity: dailyActivity,
+      trainingLoadWorkouts: workoutsData,
     };
 
     return new Response(JSON.stringify(body), {

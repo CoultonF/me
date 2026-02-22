@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { StephActivityAPIResponse } from '../lib/types/steph-activity';
 import StephActivityRings from './steph-activity/StephActivityRings';
-import StephDailyCaloriesChart from './steph-activity/StephDailyCaloriesChart';
 import StephActivityTrends from './steph-activity/StephActivityTrends';
 import StephActivitySummaryCards from './steph-activity/StephActivitySummaryCards';
 import StephWorkoutSummaryCards from './steph-activity/StephWorkoutSummaryCards';
@@ -110,12 +109,7 @@ export default function StephActivityDashboard({ initialRange = '90d' }: Props) 
         <>
           {/* ── Activity ── */}
           <ErrorBoundary fallbackTitle="Activity rings failed to load">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StephActivityRings activeCalories={todayCalories} exerciseMinutes={todayExercise} />
-              <div className="md:col-span-2">
-                <StephDailyCaloriesChart dailyActivity={data?.dailyActivity ?? []} />
-              </div>
-            </div>
+            <StephActivityRings activeCalories={todayCalories} exerciseMinutes={todayExercise} />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Activity trends failed to load">
@@ -136,7 +130,7 @@ export default function StephActivityDashboard({ initialRange = '90d' }: Props) 
           </div>
 
           <ErrorBoundary fallbackTitle="Training load chart failed to load">
-            <TrainingLoadChart trainingLoadActivity={data?.trainingLoadActivity ?? []} />
+            <TrainingLoadChart trainingLoadActivity={data?.dailyActivity ?? []} />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Recovery readiness failed to load">
