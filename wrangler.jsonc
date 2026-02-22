@@ -8,6 +8,11 @@
       "binding": "DB",
       "database_name": "coultonf-health",
       "database_id": "57968039-caca-44a5-b5e8-56492af00b15"
+    },
+    {
+      "binding": "WIFE_DB",
+      "database_name": "coultonf-wife-health",
+      "database_id": "3395488d-a04d-433e-9eb5-1106fb88cf17"
     }
   ]
 }

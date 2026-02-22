@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "db:generate": "drizzle-kit generate",
+    "db:generate:wife": "drizzle-kit generate --config=drizzle-wife.config.ts",
     "db:push": "drizzle-kit push",
     "postbuild": "node scripts/patch-worker.cjs",
     "deploy": "npm run build && wrangler pages deploy ./dist --project-name me --commit-dirty=true"

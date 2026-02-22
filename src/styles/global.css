@@ -71,6 +71,20 @@
   --color-rehab-prerun: #f59e0b;
   --color-injury-bg: #fca5a5;
 
+  /* ── Steph dashboard colors ── */
+  --color-steph-calories: #f472b6;
+  --color-steph-exercise: #a78bfa;
+  --color-steph-workout: #818cf8;
+  --color-steph-rhr: #ef4444;
+  --color-steph-hrv: #22c55e;
+  --color-steph-sleep: #6366f1;
+  --color-steph-sleep-rem: #818cf8;
+  --color-steph-sleep-core: #6366f1;
+  --color-steph-sleep-deep: #4338ca;
+  --color-steph-sleep-awake: #c7d2fe;
+  --color-steph-acute: #f59e0b;
+  --color-steph-chronic: #0ea5e9;
+
   /* ── Legacy dashboard tokens (used by /dashboard) ── */
   --color-surface: #0f172a;
   --color-surface-raised: #1e293b;

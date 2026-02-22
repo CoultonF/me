@@ -1,0 +1,8 @@
+---
+import SiteLayout from '@/layouts/SiteLayout.astro';
+import StephActivityDashboard from '@/islands/StephActivityDashboard';
+---
+
+<SiteLayout title="Steph's Activity | Coulton Fraser" activePath="/private/steph-activity">
+  <StephActivityDashboard client:load initialRange="30d" />
+</SiteLayout>

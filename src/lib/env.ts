@@ -1,5 +1,6 @@
 export interface CfEnv {
   DB: D1Database;
+  WIFE_DB: D1Database;
   TIDEPOOL_EMAIL: string;
   TIDEPOOL_PASSWORD: string;
   STRAVA_CLIENT_ID: string;
@@ -7,6 +8,7 @@ export interface CfEnv {
   GITHUB_TOKEN: string;
   GITHUB_USERNAME: string;
   ANTHROPIC_ADMIN_KEY: string;
+  WIFE_SYNC_SECRET: string;
 }
 
 let _cached: CfEnv | null | undefined;
