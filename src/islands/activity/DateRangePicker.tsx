@@ -1,15 +1,19 @@
-type Range = '7d' | '30d' | '90d' | '365d';
+type Range = string;
 
 interface Props {
   selected: Range;
   onChange: (range: Range) => void;
 }
 
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i);
+
 const ranges: { value: Range; label: string }[] = [
   { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
   { value: '90d', label: '90d' },
   { value: '365d', label: '1y' },
+  ...years.map((y) => ({ value: String(y), label: String(y) })),
 ];
 
 export default function DateRangePicker({ selected, onChange }: Props) {

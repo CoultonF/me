@@ -51,11 +51,20 @@ export const GET: APIRoute = async ({ url }) => {
     const db = createWifeDb(cfEnv.WIFE_DB);
 
     const range = url.searchParams.get('range') ?? '30d';
-    const ms = RANGE_MS[range] ?? RANGE_MS['30d']!;
-
     const now = new Date();
-    const startDate = new Date(now.getTime() - ms).toISOString().slice(0, 10);
-    const endDate = now.toISOString().slice(0, 10);
+    let startDate: string;
+    let endDate: string;
+
+    if (/^\d{4}$/.test(range)) {
+      // Year range: "2025", "2024", etc.
+      startDate = `${range}-01-01`;
+      const yearEnd = `${parseInt(range) + 1}-01-01`;
+      endDate = yearEnd < now.toISOString().slice(0, 10) ? `${range}-12-31` : now.toISOString().slice(0, 10);
+    } else {
+      const ms = RANGE_MS[range] ?? RANGE_MS['30d']!;
+      startDate = new Date(now.getTime() - ms).toISOString().slice(0, 10);
+      endDate = now.toISOString().slice(0, 10);
+    }
 
     // Always fetch 90 days for training load computation
     const trainingLoadStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

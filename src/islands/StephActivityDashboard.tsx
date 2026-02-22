@@ -19,7 +19,7 @@ import DateRangePicker from './activity/DateRangePicker';
 import ErrorBoundary from './shared/ErrorBoundary';
 import { CardsSkeleton, ChartSkeleton } from './shared/DashboardSkeleton';
 
-type Range = '7d' | '30d' | '90d' | '365d';
+type Range = string;
 
 interface Props {
   initialRange?: Range;
