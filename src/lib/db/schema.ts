@@ -193,6 +193,17 @@ export const gifts = sqliteTable('gifts', {
   uniqueIndex('gifts_name_category_idx').on(table.name, table.category),
 ]);
 
+// ── Hydration tracking ──
+
+export const hydrationLog = sqliteTable('hydration_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  timestamp: text('timestamp').notNull(), // ISO 8601
+  amountMl: integer('amount_ml').notNull(),
+  note: text('note'),
+}, (table) => [
+  uniqueIndex('hydration_log_timestamp_idx').on(table.timestamp),
+]);
+
 export const claudeCodeModels = sqliteTable('claude_code_models', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(),

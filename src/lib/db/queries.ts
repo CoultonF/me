@@ -1,6 +1,6 @@
 import { desc, asc, and, gte, lte, eq, sql, count, min } from 'drizzle-orm';
 import type { Database } from './client';
-import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan, gifts, rehabLog, settings } from './schema';
+import { glucoseReadings, insulinDoses, runningSessions, activitySummaries, races, raceResults, githubContributions, githubRepos, githubEvents, githubLanguages, claudeCodeDaily, claudeCodeModels, trainingPlan, gifts, rehabLog, hydrationLog, settings } from './schema';
 
 export async function getLatestGlucose(db: Database) {
   const rows = await db
@@ -1035,4 +1035,93 @@ export async function setInjuryEnd(db: Database, date: string) {
     .insert(settings)
     .values({ key: 'injury_end', value: date })
     .onConflictDoUpdate({ target: settings.key, set: { value: date } });
+}
+
+// ── Hydration queries ──
+
+export async function getHydrationToday(db: Database, date: string) {
+  return db
+    .select({
+      id: hydrationLog.id,
+      timestamp: hydrationLog.timestamp,
+      amountMl: hydrationLog.amountMl,
+      note: hydrationLog.note,
+    })
+    .from(hydrationLog)
+    .where(sql`date(${hydrationLog.timestamp}) = ${date}`)
+    .orderBy(desc(hydrationLog.timestamp));
+}
+
+export async function getHydrationDailyTotals(db: Database, startDate: string, endDate: string) {
+  return db
+    .select({
+      date: sql<string>`date(${hydrationLog.timestamp})`.as('date'),
+      totalMl: sql<number>`coalesce(sum(${hydrationLog.amountMl}), 0)`.as('total_ml'),
+      entryCount: count(),
+    })
+    .from(hydrationLog)
+    .where(and(
+      gte(sql`date(${hydrationLog.timestamp})`, startDate),
+      lte(sql`date(${hydrationLog.timestamp})`, endDate),
+    ))
+    .groupBy(sql`date(${hydrationLog.timestamp})`)
+    .orderBy(sql`date(${hydrationLog.timestamp})`);
+}
+
+export async function getHydrationStats(db: Database, startDate: string, endDate: string, goalMl: number) {
+  const dailyTotals = await getHydrationDailyTotals(db, startDate, endDate);
+
+  if (dailyTotals.length === 0) {
+    return { currentStreak: 0, avgDailyMl: 0, totalDays: 0, dailyTotals: [] };
+  }
+
+  const avgDailyMl = Math.round(
+    dailyTotals.reduce((s, d) => s + d.totalMl, 0) / dailyTotals.length,
+  );
+
+  // Streak: consecutive days meeting goal ending at today or yesterday
+  const dateSet = new Set(dailyTotals.filter((d) => d.totalMl >= goalMl).map((d) => d.date));
+  let currentStreak = 0;
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (dateSet.has(key)) {
+      currentStreak++;
+    } else if (i === 0) {
+      continue; // today hasn't been completed yet — check from yesterday
+    } else {
+      break;
+    }
+  }
+
+  return { currentStreak, avgDailyMl, totalDays: dailyTotals.length, dailyTotals };
+}
+
+export async function insertHydrationEntry(db: Database, timestamp: string, amountMl: number, note?: string | null) {
+  const rows = await db.insert(hydrationLog).values({
+    timestamp,
+    amountMl,
+    note: note ?? null,
+  }).returning({ id: hydrationLog.id });
+  return rows[0]!.id;
+}
+
+export async function deleteHydrationEntry(db: Database, id: number) {
+  await db.delete(hydrationLog).where(eq(hydrationLog.id, id));
+}
+
+export async function getHydrationGoal(db: Database) {
+  const rows = await db
+    .select({ value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, 'hydration_goal_ml'));
+  return rows[0] ? parseInt(rows[0].value, 10) : 2500; // default 2500ml
+}
+
+export async function setHydrationGoal(db: Database, goalMl: number) {
+  await db
+    .insert(settings)
+    .values({ key: 'hydration_goal_ml', value: String(goalMl) })
+    .onConflictDoUpdate({ target: settings.key, set: { value: String(goalMl) } });
 }

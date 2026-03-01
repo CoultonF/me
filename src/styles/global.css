@@ -65,6 +65,11 @@
   --color-running-hr-zone5: #ef4444;
   --color-running-cycling: #f59e0b;
 
+  /* ── Hydration colors ── */
+  --color-hydration: #0ea5e9;
+  --color-hydration-goal: #22c55e;
+  --color-hydration-bg: #0ea5e920;
+
   /* ── Rehab exercise category colors ── */
   --color-rehab-strength: #6366f1;
   --color-rehab-mobility: #14b8a6;
