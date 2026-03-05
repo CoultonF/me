@@ -37,12 +37,7 @@ function buildHydrationQueries(db: Database, rows: HydrationPayload[]) {
     db.insert(hydrationLog).values({
       timestamp: row.timestamp,
       amountMl: row.amountMl,
-    }).onConflictDoUpdate({
-      target: hydrationLog.timestamp,
-      set: {
-        amountMl: sql`excluded.amount_ml`,
-      },
-    })
+    }).onConflictDoNothing()
   );
 }
 
