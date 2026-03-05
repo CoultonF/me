@@ -73,6 +73,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
   } catch (e) {
     console.error('[api/health-sync]', e);
-    return jsonResponse({ error: 'Internal server error' }, 500);
+    const message = e instanceof Error ? e.message : String(e);
+    return jsonResponse({ error: 'Internal server error', detail: message }, 500);
   }
 };
