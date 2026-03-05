@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { HydrationAPIResponse, HydrationEntry } from '../../lib/types/hydration';
-import { useAuth } from '../shared/useAuth';
+import { useState, useEffect } from 'react';
+import type { HydrationAPIResponse } from '../../lib/types/hydration';
 import HydrationProgress from './HydrationProgress';
-import HydrationQuickAdd from './HydrationQuickAdd';
 import HydrationEntryList from './HydrationEntryList';
 import HydrationHistory from './HydrationHistory';
 
@@ -12,7 +10,6 @@ const EMPTY_RESPONSE: HydrationAPIResponse = {
 };
 
 export default function HydrationTracker() {
-  const isAdmin = useAuth();
   const [data, setData] = useState<HydrationAPIResponse>(EMPTY_RESPONSE);
   const [loading, setLoading] = useState(true);
 
@@ -23,87 +20,6 @@ export default function HydrationTracker() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  const handleAdd = useCallback(async (amountMl: number) => {
-    const timestamp = new Date().toISOString();
-    const tempId = -Date.now(); // negative temp ID for optimistic entry
-
-    // Optimistic update
-    const optimisticEntry: HydrationEntry = { id: tempId, timestamp, amountMl, note: null };
-    setData((prev) => ({
-      ...prev,
-      today: {
-        ...prev.today,
-        totalMl: prev.today.totalMl + amountMl,
-        entries: [optimisticEntry, ...prev.today.entries],
-      },
-    }));
-
-    try {
-      const res = await fetch('/private/api/hydration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', amountMl, timestamp }),
-      });
-      if (!res.ok) throw new Error('Failed to add');
-      const { id } = await res.json() as { ok: boolean; id: number };
-
-      // Replace temp ID with real ID
-      setData((prev) => ({
-        ...prev,
-        today: {
-          ...prev.today,
-          entries: prev.today.entries.map((e) => e.id === tempId ? { ...e, id } : e),
-        },
-      }));
-    } catch {
-      // Rollback
-      setData((prev) => ({
-        ...prev,
-        today: {
-          ...prev.today,
-          totalMl: prev.today.totalMl - amountMl,
-          entries: prev.today.entries.filter((e) => e.id !== tempId),
-        },
-      }));
-    }
-  }, []);
-
-  const handleDelete = useCallback(async (id: number) => {
-    const entry = data.today.entries.find((e) => e.id === id);
-    if (!entry) return;
-
-    // Optimistic update
-    setData((prev) => ({
-      ...prev,
-      today: {
-        ...prev.today,
-        totalMl: prev.today.totalMl - entry.amountMl,
-        entries: prev.today.entries.filter((e) => e.id !== id),
-      },
-    }));
-
-    try {
-      const res = await fetch('/private/api/hydration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id }),
-      });
-      if (!res.ok) throw new Error('Failed to delete');
-    } catch {
-      // Rollback
-      setData((prev) => ({
-        ...prev,
-        today: {
-          ...prev.today,
-          totalMl: prev.today.totalMl + entry.amountMl,
-          entries: [...prev.today.entries, entry].sort(
-            (a, b) => b.timestamp.localeCompare(a.timestamp),
-          ),
-        },
-      }));
-    }
-  }, [data.today.entries]);
 
   if (loading) {
     return (
@@ -120,15 +36,10 @@ export default function HydrationTracker() {
     <div className="space-y-4">
       <div className="text-xs font-medium text-dim uppercase tracking-wide">Hydration</div>
 
-      {/* Progress + Quick-add side by side */}
+      {/* Progress ring */}
       <div className="bg-tile border border-stroke rounded-lg p-4">
-        <div className="flex items-center gap-6">
-          <div className="relative shrink-0">
-            <HydrationProgress totalMl={today.totalMl} goalMl={today.goalMl} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <HydrationQuickAdd onAdd={handleAdd} disabled={!isAdmin} />
-          </div>
+        <div className="flex items-center justify-center">
+          <HydrationProgress totalMl={today.totalMl} goalMl={today.goalMl} />
         </div>
       </div>
 
@@ -152,7 +63,7 @@ export default function HydrationTracker() {
       {today.entries.length > 0 && (
         <div className="bg-tile border border-stroke rounded-lg p-3">
           <div className="text-[11px] font-medium text-dim uppercase tracking-wide mb-2">Today's Entries</div>
-          <HydrationEntryList entries={today.entries} onDelete={handleDelete} interactive={isAdmin} />
+          <HydrationEntryList entries={today.entries} />
         </div>
       )}
 
