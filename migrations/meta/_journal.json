@@ -50,6 +50,27 @@
       "when": 1771545600000,
       "tag": "0006_gifts",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1771545600001,
+      "tag": "0006_rehab_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1771545600002,
+      "tag": "0007_hydration_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1771545600003,
+      "tag": "0008_heart_rate_daily",
+      "breakpoints": true
     }
   ]
 }
