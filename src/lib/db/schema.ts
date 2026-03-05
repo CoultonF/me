@@ -193,6 +193,17 @@ export const gifts = sqliteTable('gifts', {
   uniqueIndex('gifts_name_category_idx').on(table.name, table.category),
 ]);
 
+// ── Heart rate daily (Apple Health sync — main user) ──
+
+export const heartRateDaily = sqliteTable('heart_rate_daily', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull().unique(), // YYYY-MM-DD
+  restingHR: integer('resting_hr'),
+  walkingHRAvg: integer('walking_hr_avg'),
+  hrv: real('hrv'), // SDNN in ms
+  updatedAt: text('updated_at'),
+});
+
 // ── Hydration tracking ──
 
 export const hydrationLog = sqliteTable('hydration_log', {

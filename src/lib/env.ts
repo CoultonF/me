@@ -8,6 +8,7 @@ export interface CfEnv {
   GITHUB_TOKEN: string;
   GITHUB_USERNAME: string;
   ANTHROPIC_ADMIN_KEY: string;
+  SYNC_SECRET: string;
   WIFE_SYNC_SECRET: string;
 }
 

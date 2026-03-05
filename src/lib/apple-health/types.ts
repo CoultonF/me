@@ -55,6 +55,11 @@ export const bodyMeasurementSchema = z.object({
   value: z.number(),
 });
 
+export const hydrationSchema = z.object({
+  timestamp: isoString,
+  amountMl: z.number().int(),
+});
+
 export const syncPayloadSchema = z.object({
   syncTimestamp: isoString,
   dailyActivity: z.array(dailyActivitySchema).optional(),
@@ -63,6 +68,7 @@ export const syncPayloadSchema = z.object({
   vitals: z.array(vitalSchema).optional(),
   sleepSessions: z.array(sleepSessionSchema).optional(),
   bodyMeasurements: z.array(bodyMeasurementSchema).optional(),
+  hydration: z.array(hydrationSchema).optional(),
 });
 
 export type DailyActivityPayload = z.infer<typeof dailyActivitySchema>;
@@ -71,6 +77,7 @@ export type HeartRateDailyPayload = z.infer<typeof heartRateDailySchema>;
 export type VitalPayload = z.infer<typeof vitalSchema>;
 export type SleepSessionPayload = z.infer<typeof sleepSessionSchema>;
 export type BodyMeasurementPayload = z.infer<typeof bodyMeasurementSchema>;
+export type HydrationPayload = z.infer<typeof hydrationSchema>;
 export type AppleHealthSyncPayload = z.infer<typeof syncPayloadSchema>;
 
 export interface SyncResult {
@@ -80,4 +87,5 @@ export interface SyncResult {
   vitals?: number;
   sleepSessions?: number;
   bodyMeasurements?: number;
+  hydration?: number;
 }
