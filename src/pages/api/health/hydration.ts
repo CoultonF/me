@@ -9,7 +9,7 @@ const emptyResponse: HydrationAPIResponse = {
   stats: { currentStreak: 0, avgDailyMl: 0, totalDays: 0, dailyTotals: [] },
 };
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ request }) => {
   try {
     const cfEnv = await getCloudflareEnv();
     if (!cfEnv) {
@@ -19,8 +19,16 @@ export const GET: APIRoute = async () => {
     }
 
     const db = createDb(cfEnv.DB);
-    const today = new Date().toISOString().slice(0, 10);
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const url = new URL(request.url);
+    const todayParam = url.searchParams.get('today');
+    const today = todayParam && /^\d{4}-\d{2}-\d{2}$/.test(todayParam)
+      ? todayParam
+      : new Date().toISOString().slice(0, 10);
+    const ninetyDaysAgo = (() => {
+      const d = new Date(today + 'T00:00:00');
+      d.setDate(d.getDate() - 90);
+      return d.toISOString().slice(0, 10);
+    })();
 
     const [entries, goalMl] = await Promise.all([
       getHydrationToday(db, today),

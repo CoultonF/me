@@ -1048,24 +1048,24 @@ export async function getHydrationToday(db: Database, date: string) {
       note: hydrationLog.note,
     })
     .from(hydrationLog)
-    .where(sql`date(${hydrationLog.timestamp}) = ${date}`)
+    .where(sql`substr(${hydrationLog.timestamp}, 1, 10) = ${date}`)
     .orderBy(desc(hydrationLog.timestamp));
 }
 
 export async function getHydrationDailyTotals(db: Database, startDate: string, endDate: string) {
   return db
     .select({
-      date: sql<string>`date(${hydrationLog.timestamp})`.as('date'),
+      date: sql<string>`substr(${hydrationLog.timestamp}, 1, 10)`.as('date'),
       totalMl: sql<number>`coalesce(sum(${hydrationLog.amountMl}), 0)`.as('total_ml'),
       entryCount: count(),
     })
     .from(hydrationLog)
     .where(and(
-      gte(sql`date(${hydrationLog.timestamp})`, startDate),
-      lte(sql`date(${hydrationLog.timestamp})`, endDate),
+      gte(sql`substr(${hydrationLog.timestamp}, 1, 10)`, startDate),
+      lte(sql`substr(${hydrationLog.timestamp}, 1, 10)`, endDate),
     ))
-    .groupBy(sql`date(${hydrationLog.timestamp})`)
-    .orderBy(sql`date(${hydrationLog.timestamp})`);
+    .groupBy(sql`substr(${hydrationLog.timestamp}, 1, 10)`)
+    .orderBy(sql`substr(${hydrationLog.timestamp}, 1, 10)`);
 }
 
 export async function getHydrationStats(db: Database, startDate: string, endDate: string, goalMl: number) {
