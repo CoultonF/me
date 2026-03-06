@@ -1039,7 +1039,8 @@ export async function setInjuryEnd(db: Database, date: string) {
 
 // ── Hydration queries ──
 
-export async function getHydrationToday(db: Database, date: string) {
+export async function getHydrationToday(db: Database, date: string, tzOffset = 0) {
+  const modifier = `${tzOffset} minutes`;
   return db
     .select({
       id: hydrationLog.id,
@@ -1048,28 +1049,29 @@ export async function getHydrationToday(db: Database, date: string) {
       note: hydrationLog.note,
     })
     .from(hydrationLog)
-    .where(sql`substr(${hydrationLog.timestamp}, 1, 10) = ${date}`)
+    .where(sql`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10) = ${date}`)
     .orderBy(desc(hydrationLog.timestamp));
 }
 
-export async function getHydrationDailyTotals(db: Database, startDate: string, endDate: string) {
+export async function getHydrationDailyTotals(db: Database, startDate: string, endDate: string, tzOffset = 0) {
+  const modifier = `${tzOffset} minutes`;
   return db
     .select({
-      date: sql<string>`substr(${hydrationLog.timestamp}, 1, 10)`.as('date'),
+      date: sql<string>`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10)`.as('date'),
       totalMl: sql<number>`coalesce(sum(${hydrationLog.amountMl}), 0)`.as('total_ml'),
       entryCount: count(),
     })
     .from(hydrationLog)
     .where(and(
-      gte(sql`substr(${hydrationLog.timestamp}, 1, 10)`, startDate),
-      lte(sql`substr(${hydrationLog.timestamp}, 1, 10)`, endDate),
+      gte(sql`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10)`, startDate),
+      lte(sql`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10)`, endDate),
     ))
-    .groupBy(sql`substr(${hydrationLog.timestamp}, 1, 10)`)
-    .orderBy(sql`substr(${hydrationLog.timestamp}, 1, 10)`);
+    .groupBy(sql`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10)`)
+    .orderBy(sql`substr(datetime(${hydrationLog.timestamp}, ${modifier}), 1, 10)`);
 }
 
-export async function getHydrationStats(db: Database, startDate: string, endDate: string, goalMl: number) {
-  const dailyTotals = await getHydrationDailyTotals(db, startDate, endDate);
+export async function getHydrationStats(db: Database, startDate: string, endDate: string, goalMl: number, tzOffset = 0) {
+  const dailyTotals = await getHydrationDailyTotals(db, startDate, endDate, tzOffset);
 
   if (dailyTotals.length === 0) {
     return { currentStreak: 0, avgDailyMl: 0, totalDays: 0, dailyTotals: [] };
@@ -1083,7 +1085,7 @@ export async function getHydrationStats(db: Database, startDate: string, endDate
   const dateSet = new Set(dailyTotals.filter((d) => d.totalMl >= goalMl).map((d) => d.date));
   let currentStreak = 0;
   for (let i = 0; i <= 365; i++) {
-    const d = new Date();
+    const d = new Date(endDate + 'T00:00:00');
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
     if (dateSet.has(key)) {

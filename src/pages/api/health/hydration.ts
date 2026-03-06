@@ -24,6 +24,8 @@ export const GET: APIRoute = async ({ request }) => {
     const today = todayParam && /^\d{4}-\d{2}-\d{2}$/.test(todayParam)
       ? todayParam
       : new Date().toISOString().slice(0, 10);
+    const tzParam = parseInt(url.searchParams.get('tz') ?? '', 10);
+    const tzOffset = !isNaN(tzParam) && tzParam >= -720 && tzParam <= 840 ? tzParam : 0;
     const ninetyDaysAgo = (() => {
       const d = new Date(today + 'T00:00:00');
       d.setDate(d.getDate() - 90);
@@ -31,12 +33,12 @@ export const GET: APIRoute = async ({ request }) => {
     })();
 
     const [entries, goalMl] = await Promise.all([
-      getHydrationToday(db, today),
+      getHydrationToday(db, today, tzOffset),
       getHydrationGoal(db),
     ]);
 
     const totalMl = entries.reduce((s, e) => s + e.amountMl, 0);
-    const stats = await getHydrationStats(db, ninetyDaysAgo, today, goalMl);
+    const stats = await getHydrationStats(db, ninetyDaysAgo, today, goalMl, tzOffset);
 
     const body: HydrationAPIResponse = {
       today: { date: today, totalMl, goalMl, entries },

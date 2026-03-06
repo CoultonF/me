@@ -15,7 +15,8 @@ export default function HydrationTracker() {
 
   useEffect(() => {
     const today = new Date().toLocaleDateString('en-CA');
-    fetch(`/api/health/hydration?today=${today}`)
+    const tz = -new Date().getTimezoneOffset();
+    fetch(`/api/health/hydration?today=${today}&tz=${tz}`)
       .then((r) => r.json() as Promise<HydrationAPIResponse>)
       .then(setData)
       .catch(() => {})
